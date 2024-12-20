@@ -3,7 +3,7 @@ mod state;
 use crate::state::State;
 use anyhow::Context;
 use anyhow::Result;
-use log::{info, log, warn};
+use log::{error, info, log, warn};
 use winit::{
     event::*,
     event_loop::EventLoop,
@@ -40,10 +40,28 @@ pub async fn run() -> Result<()> {
                                 },
                             ..
                         } => control_flow.exit(),
-                        WindowEvent::KeyboardInput {
-                            event: key_event, ..
-                        } => {
-                            handle_key_event(&key_event);
+                        WindowEvent::RedrawRequested => {
+                            state.window().request_redraw();
+
+                            state.update();
+                            match state.render() {
+                                Ok(_) => {}
+                                // Reconfigure the surface if it's lost or outdated
+                                Err(
+                                    wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated,
+                                ) => state.resize(state.size),
+                                // The system is out of memory, we should probably quit
+                                Err(wgpu::SurfaceError::OutOfMemory) => {
+                                    error!("OutOfMemory");
+                                    control_flow.exit();
+                                }
+
+                                // This happens when the a frame takes too long to present
+                                Err(wgpu::SurfaceError::Timeout) => {
+                                    warn!("Surface timeout")
+                                }
+                            }
+
                         }
                         WindowEvent::Resized(physical_size) => {
                             state.resize(*physical_size);
@@ -52,25 +70,11 @@ pub async fn run() -> Result<()> {
                     }
                 };
             }
-            Event::DeviceEvent { ref event, .. } => match event {
-                DeviceEvent::MouseMotion { delta } => {
-                    info!("Mouse motion: {:?}", delta);
-                }
-                DeviceEvent::Button { button, state } => {
-                    info!("Mouse button: {:?} {:?}", button, state);
-                }
-                _ => {}
-            },
             _ => {}
         })
         .context("Error in event loop")?;
     Ok(())
 }
-
-fn handle_key_event(event: &KeyEvent) {
-    info!("Key event: {:?}", event);
-}
-
 fn main() -> Result<()> {
     pollster::block_on(run())
 }
