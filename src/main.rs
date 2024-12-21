@@ -1,4 +1,5 @@
 mod state;
+mod texture;
 
 use crate::state::State;
 use anyhow::Context;
@@ -14,6 +15,7 @@ use winit::{
 pub async fn run() -> Result<()> {
     env_logger::builder()
         .filter_level(log::LevelFilter::Info)
+        .filter(Some("wgpu_core"), log::LevelFilter::Warn)
         .init();
     let event_loop = EventLoop::new().context("Error creating the event loop")?;
     let window = WindowBuilder::new()
