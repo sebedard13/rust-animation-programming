@@ -29,6 +29,8 @@ pub async fn run() -> Result<()> {
 
     let mut state = State::new(&window).await;
 
+    let mut time_prev = std::time::Instant::now();
+
     event_loop
         .run(|event, control_flow| match event {
             Event::WindowEvent {
@@ -47,7 +49,7 @@ pub async fn run() -> Result<()> {
                                 },
                             ..
                         } => control_flow.exit(),
-                        WindowEvent::RedrawRequested => {
+                        WindowEvent::RedrawRequested => { ;
                             match state.render() {
                                 Ok(_) => {}
                                 // Reconfigure the surface if it's lost or outdated
@@ -65,6 +67,9 @@ pub async fn run() -> Result<()> {
                                     warn!("Surface timeout")
                                 }
                             }
+                            let frame_duration = std::time::Instant::now() - time_prev;
+                            time_prev = std::time::Instant::now();
+                            state.data.rd_frame_time = frame_duration.as_secs_f64();
 
                         }
                         WindowEvent::Resized(physical_size) => {

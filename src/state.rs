@@ -84,9 +84,10 @@ pub struct State<'a> {
     egui_renderer: EguiRenderer,
 
     //Data
-    data: ColorSelectorData,
+    pub data: ColorSelectorData,
     tree: Texture,
     skeleton: Texture,
+
 }
 
 impl<'a> State<'a> {
@@ -287,8 +288,9 @@ impl<'a> State<'a> {
                     && key_event.physical_key == PhysicalKey::Code(KeyCode::Space)
                 {
                     self.data.toggle_texture = !self.data.toggle_texture;
+                    return true;
                 }
-                true
+                false
             }
             WindowEvent::CursorMoved { position, .. } => {
                 self.data.save_mouse_pos(position);
@@ -301,6 +303,8 @@ impl<'a> State<'a> {
     }
 
     pub(crate) fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+
+
         let output = self.surface.get_current_texture()?;
         let view = output
             .texture
