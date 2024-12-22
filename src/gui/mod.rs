@@ -1,5 +1,7 @@
 mod gui;
 
+pub use gui::GUI;
+
 use egui::epaint::Shadow;
 use egui::{Context, Visuals};
 use egui_wgpu::ScreenDescriptor;
@@ -56,8 +58,10 @@ impl EguiRenderer {
         }
     }
 
-    pub fn handle_input(&mut self, window: &Window, event: &WindowEvent) {
-        let _ = self.state.on_window_event(window, event);
+    pub fn handle_input(&mut self, window: &Window, event: &WindowEvent) -> (bool, bool) {
+        let event_response = self.state.on_window_event(window, event);
+
+        (event_response.consumed, event_response.repaint)
     }
 
     pub fn draw(
@@ -99,7 +103,7 @@ impl EguiRenderer {
                     },
                 })],
                 depth_stencil_attachment: None,
-                label: Some("egui main render pass"),
+                label: Some("gui main render pass"),
                 timestamp_writes: None,
                 occlusion_query_set: None,
             }).forget_lifetime();

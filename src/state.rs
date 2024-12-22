@@ -7,9 +7,11 @@ use egui_winit::winit::event::{DeviceEvent, ElementState, Event, KeyEvent, Mouse
 use egui_winit::winit::keyboard::{Key, KeyCode, PhysicalKey};
 use egui_winit::winit::window::Window;
 use crate::data::ColorSelectorData;
-use crate::egui::EguiRenderer;
+use crate::gui::EguiRenderer;
 
-use egui_wgpu::wgpu as wgpu;
+use egui_wgpu::{wgpu as wgpu, ScreenDescriptor};
+use crate::gui;
+
 // lib.rs
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -79,7 +81,7 @@ pub struct State<'a> {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
 
-    //egui_renderer: EguiRenderer,
+    egui_renderer: EguiRenderer,
 
     //Data
     data: ColorSelectorData,
@@ -236,7 +238,7 @@ impl<'a> State<'a> {
             usage: wgpu::BufferUsages::INDEX,
         });
 
-        //EguiRenderer::new(&device, config.format, wgpu::TextureFormat::Depth32Float, 1);
+        let egui_renderer = EguiRenderer::new(&device, config.format, None, 1, &window);
 
         Self {
             window,
@@ -251,6 +253,7 @@ impl<'a> State<'a> {
             index_buffer,
             tree,
             skeleton,
+            egui_renderer,
         }
     }
 
@@ -268,6 +271,14 @@ impl<'a> State<'a> {
     }
 
     pub(crate) fn input(&mut self, event: &WindowEvent) -> bool {
+        let event_resp = self.egui_renderer.handle_input(self.window, event);
+        if event_resp.1{
+           self.window.request_redraw();
+        }
+        if event_resp.0 {
+            return true;
+        }
+
         match event {
             WindowEvent::KeyboardInput {
                 event: key_event, ..
@@ -289,10 +300,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub(crate) fn update(&mut self) {}
-
     pub(crate) fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
-        //https://sotrh.github.io/learn-wgpu/beginner/tutorial2-surface/#render
         let output = self.surface.get_current_texture()?;
         let view = output
             .texture
@@ -331,6 +339,21 @@ impl<'a> State<'a> {
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
             render_pass.draw_indexed(0..INDICES.len() as u32, 0, 0..1)
         }
+
+        let screen_descriptor = ScreenDescriptor {
+            size_in_pixels: [self.config.width, self.config.height],
+            pixels_per_point: self.window().scale_factor() as f32,
+        };
+
+        self.egui_renderer.draw(
+            &self.device,
+            &self.queue,
+            &mut encoder,
+            &self.window,
+            &view,
+            screen_descriptor,
+            |ui| gui::GUI(&mut self.data, ui),
+        );
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();

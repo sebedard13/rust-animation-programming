@@ -1,6 +1,6 @@
 mod state;
 mod texture;
-mod egui;
+mod gui;
 mod data;
 
 use crate::state::State;
@@ -48,9 +48,6 @@ pub async fn run() -> Result<()> {
                             ..
                         } => control_flow.exit(),
                         WindowEvent::RedrawRequested => {
-                            state.window().request_redraw();
-
-                            state.update();
                             match state.render() {
                                 Ok(_) => {}
                                 // Reconfigure the surface if it's lost or outdated
@@ -75,7 +72,9 @@ pub async fn run() -> Result<()> {
                         }
                         _ => {}
                     }
-                };
+                }else {
+                    window.request_redraw();
+                }
             }
             _ => {}
         })
