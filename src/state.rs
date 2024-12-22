@@ -1,125 +1,15 @@
 use crate::texture::Texture;
 use log::info;
-use wgpu::util::DeviceExt;
-use wgpu::Adapter;
-use winit::dpi::PhysicalPosition;
-use winit::event::{DeviceEvent, Event, KeyEvent, MouseButton, WindowEvent};
-use winit::keyboard::{Key, KeyCode, PhysicalKey};
-use winit::window::Window;
+use egui_wgpu::wgpu::util::DeviceExt;
+use egui_wgpu::wgpu::Adapter;
+use egui_winit::winit::dpi::{PhysicalPosition, PhysicalSize};
+use egui_winit::winit::event::{DeviceEvent, ElementState, Event, KeyEvent, MouseButton, WindowEvent};
+use egui_winit::winit::keyboard::{Key, KeyCode, PhysicalKey};
+use egui_winit::winit::window::Window;
+use crate::data::ColorSelectorData;
+use crate::egui::EguiRenderer;
 
-struct ColorSelectorData {
-    mouse_pos: PhysicalPosition<f64>,
-    color: wgpu::Color,
-    toggle_texture: bool,
-}
-
-impl ColorSelectorData {
-    fn new() -> Self {
-        Self {
-            mouse_pos: PhysicalPosition::new(0.0, 0.0),
-            color: wgpu::Color::WHITE,
-            toggle_texture: true,
-        }
-    }
-
-    fn save_mouse_pos(&mut self, pos: &PhysicalPosition<f64>) {
-        self.mouse_pos = pos.clone();
-    }
-
-    fn calculate_color(&mut self, size: winit::dpi::PhysicalSize<u32>) {
-        let width = size.width as f64;
-        let height = size.height as f64;
-
-        let first_fifth = width / 5.0;
-        let second_fifth = 2.0 * first_fifth;
-        let third_fifth = 3.0 * first_fifth;
-        let fourth_fifth = 4.0 * first_fifth;
-
-        let saturation = ((height - self.mouse_pos.y) / height) * 2.0;
-
-        let color = if self.mouse_pos.x < first_fifth {
-            let mut color = wgpu::Color {
-                r: 1.0,
-                g: self.mouse_pos.x / first_fifth,
-                b: 0.0,
-                a: 1.0,
-            };
-
-            if saturation > 1.0 {
-                color.b = (saturation - 1.0);
-            } else {
-                color.r = color.r * saturation;
-                color.g = color.g * saturation;
-            }
-            color
-        } else if self.mouse_pos.x < second_fifth {
-            let mut color = wgpu::Color {
-                r: 1.0 - (self.mouse_pos.x - first_fifth) / first_fifth,
-                g: 1.0,
-                b: 0.0,
-                a: 1.0,
-            };
-
-            if saturation > 1.0 {
-                color.b = (saturation - 1.0);
-            } else {
-                color.r = color.r * saturation;
-                color.g = color.g * saturation;
-            }
-            color
-        } else if self.mouse_pos.x < third_fifth {
-            let mut color = wgpu::Color {
-                r: 0.0,
-                g: 1.0,
-                b: (self.mouse_pos.x - second_fifth) / first_fifth,
-                a: 1.0,
-            };
-
-            if saturation > 1.0 {
-                color.r = (saturation - 1.0);
-            } else {
-                color.g = color.g * saturation;
-                color.b = color.b * saturation;
-            }
-            color
-        } else if self.mouse_pos.x < fourth_fifth {
-            let mut color = wgpu::Color {
-                r: 0.0,
-                g: 1.0 - (self.mouse_pos.x - third_fifth) / first_fifth,
-                b: 1.0,
-                a: 1.0,
-            };
-            if saturation > 1.0 {
-                color.r = (saturation - 1.0);
-            } else {
-                color.g = color.g * saturation;
-                color.b = color.b * saturation;
-            }
-            color
-        } else {
-            let mut color = wgpu::Color {
-                r: (self.mouse_pos.x - fourth_fifth) / first_fifth,
-                g: 0.0,
-                b: 1.0,
-                a: 1.0,
-            };
-            if saturation > 1.0 {
-                color.g = (saturation - 1.0);
-            } else {
-                color.r = color.r * saturation;
-                color.b = color.b * saturation;
-            }
-            color
-        };
-
-        self.color = color;
-    }
-
-    fn get_color(&self) -> wgpu::Color {
-        self.color
-    }
-}
-
+use egui_wgpu::wgpu as wgpu;
 // lib.rs
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -179,7 +69,7 @@ pub struct State<'a> {
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
-    pub(crate) size: winit::dpi::PhysicalSize<u32>,
+    pub(crate) size: PhysicalSize<u32>,
     // The window must be declared after the surface so
     // it gets dropped after it as the surface contains
     // unsafe references to the window's resources.
@@ -188,6 +78,8 @@ pub struct State<'a> {
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
+
+    //egui_renderer: EguiRenderer,
 
     //Data
     data: ColorSelectorData,
@@ -296,13 +188,13 @@ impl<'a> State<'a> {
             layout: Some(&render_pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
-                entry_point: "vs_main",
+                entry_point: None,
                 buffers: &[Vertex::desc()],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
-                entry_point: "fs_main",
+                entry_point: None,
                 targets: &[Some(wgpu::ColorTargetState {
                     format: config.format,
                     blend: Some(wgpu::BlendState::REPLACE),
@@ -344,6 +236,8 @@ impl<'a> State<'a> {
             usage: wgpu::BufferUsages::INDEX,
         });
 
+        //EguiRenderer::new(&device, config.format, wgpu::TextureFormat::Depth32Float, 1);
+
         Self {
             window,
             surface,
@@ -364,7 +258,7 @@ impl<'a> State<'a> {
         &self.window
     }
 
-    pub(crate) fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
+    pub(crate) fn resize(&mut self, new_size: PhysicalSize<u32>) {
         if new_size.width > 0 && new_size.height > 0 {
             self.size = new_size;
             self.config.width = new_size.width;
@@ -378,7 +272,7 @@ impl<'a> State<'a> {
             WindowEvent::KeyboardInput {
                 event: key_event, ..
             } => {
-                if key_event.state == winit::event::ElementState::Pressed
+                if key_event.state == ElementState::Pressed
                     && key_event.physical_key == PhysicalKey::Code(KeyCode::Space)
                 {
                     self.data.toggle_texture = !self.data.toggle_texture;

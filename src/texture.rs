@@ -1,4 +1,6 @@
-use wgpu::{BindGroupLayout, Device, Queue, Sampler, TextureView};
+use egui_wgpu::wgpu::{BindGroupLayout, Device, Queue, Sampler, TextureView};
+
+use egui_wgpu::wgpu as wgpu;
 
 pub struct Texture {
     pub texture: TextureView,

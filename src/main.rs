@@ -1,16 +1,22 @@
 mod state;
 mod texture;
+mod egui;
+mod data;
 
 use crate::state::State;
 use anyhow::Context;
 use anyhow::Result;
 use log::{error, info, log, warn};
-use winit::{
+use egui_winit::winit::{
     event::*,
     event_loop::EventLoop,
     keyboard::{KeyCode, PhysicalKey},
-    window::WindowBuilder,
+    window::Window
 };
+use egui_winit::winit::dpi::{PhysicalSize, Size};
+use egui_winit::winit::window::WindowAttributes;
+
+use egui_wgpu::wgpu as wgpu;
 
 pub async fn run() -> Result<()> {
     env_logger::builder()
@@ -18,9 +24,8 @@ pub async fn run() -> Result<()> {
         .filter(Some("wgpu_core"), log::LevelFilter::Warn)
         .init();
     let event_loop = EventLoop::new().context("Error creating the event loop")?;
-    let window = WindowBuilder::new()
-        .build(&event_loop)
-        .context("Error creating the window")?;
+    let window_attributes = WindowAttributes::default().with_title("Streamline CFD").with_inner_size(Size::Physical(PhysicalSize::new(800, 600)));
+    let window = event_loop.create_window(window_attributes)?;
 
     let mut state = State::new(&window).await;
 
