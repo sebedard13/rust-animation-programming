@@ -10,6 +10,7 @@ use crate::data::ColorSelectorData;
 use crate::gui::EguiRenderer;
 
 use egui_wgpu::{wgpu as wgpu, ScreenDescriptor};
+use crate::camera::{Camera, CameraMatBuffer};
 use crate::gui;
 
 // lib.rs
@@ -88,6 +89,9 @@ pub struct State<'a> {
     tree: Texture,
     skeleton: Texture,
 
+    pub cameraMatBuffer: CameraMatBuffer,
+    pub camera_buffer: wgpu::Buffer,
+    pub camera_bind_group: wgpu::BindGroup,
 }
 
 impl<'a> State<'a> {
@@ -177,12 +181,51 @@ impl<'a> State<'a> {
         let mut skeleton = Texture::from_file(&device, &queue, include_bytes!("skeleton_head.jpg"));
         skeleton.create_texture_group(&device, &texture_bind_group_layout);
 
+        let mut cameraMatBuffer = CameraMatBuffer::new();
+
+        let camera_buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Camera Buffer"),
+                contents: bytemuck::cast_slice(&[cameraMatBuffer]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            }
+        );
+
+        let camera_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }
+            ],
+            label: Some("camera_bind_group_layout"),
+        });
+
+        let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &camera_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: camera_buffer.as_entire_binding(),
+                }
+            ],
+            label: Some("camera_bind_group"),
+        });
+
+
+
         let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&texture_bind_group_layout],
+                bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_group_layout],
                 push_constant_ranges: &[],
             });
 
@@ -255,6 +298,9 @@ impl<'a> State<'a> {
             tree,
             skeleton,
             egui_renderer,
+            cameraMatBuffer,
+            camera_buffer,
+            camera_bind_group,
         }
     }
 
@@ -290,20 +336,44 @@ impl<'a> State<'a> {
                     self.data.toggle_texture = !self.data.toggle_texture;
                     return true;
                 }
+                handle_wasd_input(key_event, &mut self.data.camera);
                 false
             }
             WindowEvent::CursorMoved { position, .. } => {
                 self.data.save_mouse_pos(position);
-                self.data.calculate_color(self.size);
                 true
             }
             WindowEvent::MouseInput { button, state, .. } if *button == MouseButton::Left => true,
+            WindowEvent::MouseInput { button, state, .. } if *button == MouseButton::Right => {
+                self.data.mouse_locked = !self.data.mouse_locked;
+                true
+            },
             _ => false,
+        }
+    }
+
+    pub fn raw_input(&mut self, event: &DeviceEvent) -> bool {
+        match event {
+            DeviceEvent::MouseMotion { delta } => {
+                if self.data.mouse_locked {
+                    self.data.camera.view_azimuth += delta.0 * 0.1;
+                    self.data.camera.view_elevation -= delta.1 * 0.1;
+                    self.data.camera.update_vectors();
+                    return true;
+                }
+                false
+            }
+            _ => {
+                false
+            }
         }
     }
 
     pub(crate) fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
 
+        self.cameraMatBuffer.update(&self.data.camera);
+        self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.cameraMatBuffer]));
+        self.window.set_cursor_visible(!self.data.mouse_locked);
 
         let output = self.surface.get_current_texture()?;
         let view = output
@@ -322,7 +392,7 @@ impl<'a> State<'a> {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(self.data.color),
+                        load: wgpu::LoadOp::Clear(wgpu::Color::WHITE),
                         store: wgpu::StoreOp::Store,
                     },
                 })],
@@ -339,6 +409,7 @@ impl<'a> State<'a> {
 
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, bind_group, &[]);
+            render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
             render_pass.draw_indexed(0..INDICES.len() as u32, 0, 0..1)
@@ -363,6 +434,47 @@ impl<'a> State<'a> {
         output.present();
 
         Ok(())
+    }
+}
+
+fn handle_wasd_input(event: &KeyEvent, camera: &mut Camera) {
+    match event {
+        KeyEvent {
+            state: ElementState::Pressed,
+            physical_key: PhysicalKey::Code(KeyCode::KeyW),
+            ..
+        } => camera.move_forward(),
+        KeyEvent {
+            state: ElementState::Pressed,
+            physical_key: PhysicalKey::Code(KeyCode::KeyS),
+            ..
+        } => camera.move_backward(),
+        KeyEvent {
+            state: ElementState::Pressed,
+            physical_key: PhysicalKey::Code(KeyCode::KeyA),
+            ..
+        } => camera.move_left(),
+        KeyEvent {
+            state: ElementState::Pressed,
+            physical_key: PhysicalKey::Code(KeyCode::KeyD),
+            ..
+        } => camera.move_right(),
+        KeyEvent {
+            state: ElementState::Pressed,
+            physical_key: PhysicalKey::Code(KeyCode::KeyQ),
+            ..
+        } => camera.move_down(),
+        KeyEvent {
+            state: ElementState::Pressed,
+            physical_key: PhysicalKey::Code(KeyCode::KeyE),
+            ..
+        } => camera.move_up(),
+        KeyEvent {
+            state: ElementState::Pressed,
+            physical_key: PhysicalKey::Code(KeyCode::KeyR),
+            ..
+        } => camera.reset(),
+        _ => {}
     }
 }
 

@@ -23,7 +23,11 @@ pub fn GUI(data: &mut ColorSelectorData, ui: &Context) {
             if ui.button("Toggle Texture (Space)").clicked() {
                 data.toggle_texture = !data.toggle_texture
             }
+
             ui.separator();
-            ui.label(format!("Bg Color (r:{:.2}, g:{:.2}, b:{:.2})", data.color.r,  data.color.b, data.color.g));
+            ui.label("Camera");
+            ui.label(format!("Azimuth: {:.2}", data.camera.view_azimuth));
+            ui.label(format!("Elevation: {:.2}", data.camera.view_elevation));
+            ui.label(format!("Position: {:?}", data.camera.position));
         });
 }
