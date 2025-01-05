@@ -1,6 +1,6 @@
 mod gui;
 
-pub use gui::GUI;
+pub use gui::gui;
 
 use egui::epaint::Shadow;
 use egui::{Context, Visuals};

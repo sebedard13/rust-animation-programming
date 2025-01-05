@@ -1,7 +1,7 @@
 use egui::{Align2, Context};
 use crate::data::ColorSelectorData;
 
-pub fn GUI(data: &mut ColorSelectorData, ui: &Context) {
+pub fn gui(data: &mut ColorSelectorData, ui: &Context) {
     egui::Window::new("Infos")
         .default_open(true)
         .default_width(200.0)
@@ -19,15 +19,12 @@ pub fn GUI(data: &mut ColorSelectorData, ui: &Context) {
                 (1.0 - 0.98) * newFPS;
 
             ui.label(format!("FPS {:.2}", data.current_fps));
-            ui.separator();
-            if ui.button("Toggle Texture (Space)").clicked() {
-                data.toggle_texture = !data.toggle_texture
-            }
 
             ui.separator();
             ui.label("Camera");
+            ui.add(egui::Slider::new(&mut data.camera.fovy, 30.0..=120.0).text("Fov"));
             ui.label(format!("Azimuth: {:.2}", data.camera.view_azimuth));
             ui.label(format!("Elevation: {:.2}", data.camera.view_elevation));
-            ui.label(format!("Position: {:?}", data.camera.position));
+            ui.label(format!("Position: ({:.2}, {:.2}, {:.2})", data.camera.position.x, data.camera.position.y, data.camera.position.z));
         });
 }

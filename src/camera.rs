@@ -17,9 +17,14 @@ pub struct Camera {
     pub view_azimuth: f64,
     pub view_elevation: f64,
 
-    fovy: f32,
+    pub move_front_back: f32,
+    pub move_left_right: f32,
+    pub move_up_down: f32,
+
+    pub fovy: f32,
     znear: f32,
     zfar: f32,
+    pub  aspect: f32,
 }
 
 impl Camera {
@@ -31,9 +36,14 @@ impl Camera {
             view_azimuth: 0.0,
             view_elevation: -26.56,
 
-            fovy: 45.0,
+            fovy: 90.0,
             znear: 0.1,
             zfar: 100.0,
+
+            move_front_back: 0.0,
+            move_left_right: 0.0,
+            move_up_down: 0.0,
+            aspect: 1.0,
         }
     }
 
@@ -69,7 +79,7 @@ impl Camera {
     pub fn get_view_matrix(&self) -> Mat4 {
         let proj = Mat4::perspective_rh(
             self.fovy.to_radians(),
-            1.0,
+            self.aspect,
             self.znear,
             self.zfar,
         );
@@ -77,28 +87,17 @@ impl Camera {
     }
 
     const MOVE_SPEED: f32 = 0.1;
-    pub fn move_forward(&mut self) {
-        self.position += self.view_direction * Self::MOVE_SPEED;
-    }
 
-    pub fn move_backward(&mut self) {
-        self.position -= self.view_direction * Self::MOVE_SPEED;
-    }
-
-    pub fn move_left(&mut self) {
-        self.position -= self.view_direction.cross(self.up).normalize() * Self::MOVE_SPEED;
-    }
-
-    pub fn move_right(&mut self) {
-        self.position += self.view_direction.cross(self.up).normalize() * Self::MOVE_SPEED;
-    }
-
-    pub fn move_up(&mut self) {
-        self.position += self.up * Self::MOVE_SPEED;
-    }
-
-    pub fn move_down(&mut self) {
-        self.position -= self.up * Self::MOVE_SPEED;
+    pub fn move_update(&mut self){
+        if self.move_front_back != 0.0 {
+            self.position += self.view_direction * self.move_front_back * Self::MOVE_SPEED;
+        }
+        if self.move_left_right != 0.0 {
+            self.position += self.view_direction.cross(self.up).normalize() * self.move_left_right * Self::MOVE_SPEED;
+        }
+        if self.move_up_down != 0.0 {
+            self.position += self.up * self.move_up_down * Self::MOVE_SPEED;
+        }
     }
 
     pub fn reset(&mut self) {

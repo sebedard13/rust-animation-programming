@@ -3,6 +3,7 @@ mod data;
 mod gui;
 mod state;
 mod texture;
+mod model;
 
 use crate::state::State;
 use anyhow::Context;

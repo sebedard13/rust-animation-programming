@@ -1,71 +1,20 @@
+use crate::data::ColorSelectorData;
+use crate::gui::EguiRenderer;
 use crate::texture::Texture;
-use log::info;
 use egui_wgpu::wgpu::util::DeviceExt;
 use egui_wgpu::wgpu::Adapter;
 use egui_winit::winit::dpi::{PhysicalPosition, PhysicalSize};
-use egui_winit::winit::event::{DeviceEvent, ElementState, Event, KeyEvent, MouseButton, WindowEvent};
+use egui_winit::winit::event::{
+    DeviceEvent, ElementState, Event, KeyEvent, MouseButton, WindowEvent,
+};
 use egui_winit::winit::keyboard::{Key, KeyCode, PhysicalKey};
 use egui_winit::winit::window::Window;
-use crate::data::ColorSelectorData;
-use crate::gui::EguiRenderer;
+use log::info;
 
-use egui_wgpu::{wgpu as wgpu, ScreenDescriptor};
 use crate::camera::{Camera, CameraMatBuffer};
 use crate::gui;
-
-// lib.rs
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct Vertex {
-    position: [f32; 3],
-    tex_coords: [f32; 2],
-}
-
-impl Vertex {
-    fn desc() -> wgpu::VertexBufferLayout<'static> {
-        wgpu::VertexBufferLayout {
-            array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-                wgpu::VertexAttribute {
-                    offset: size_of::<[f32; 3]>() as wgpu::BufferAddress,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Float32x2,
-                },
-            ],
-        }
-    }
-}
-
-const VERTICES: &[Vertex] = &[
-    Vertex {
-        position: [-0.0868241, 0.49240386, 0.0],
-        tex_coords: [0.4131759, 0.00759614],
-    }, // A
-    Vertex {
-        position: [-0.49513406, 0.06958647, 0.0],
-        tex_coords: [0.0048659444, 0.43041354],
-    }, // B
-    Vertex {
-        position: [-0.21918549, -0.44939706, 0.0],
-        tex_coords: [0.28081453, 0.949397],
-    }, // C
-    Vertex {
-        position: [0.35966998, -0.3473291, 0.0],
-        tex_coords: [0.85967, 0.84732914],
-    }, // D
-    Vertex {
-        position: [0.44147372, 0.2347359, 0.0],
-        tex_coords: [0.9414737, 0.2652641],
-    }, // E
-];
-
-const INDICES: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4];
+use crate::model::{Vertex, INDICES, VERTICES};
+use egui_wgpu::{wgpu, ScreenDescriptor};
 
 pub struct State<'a> {
     surface: wgpu::Surface<'a>,
@@ -86,10 +35,9 @@ pub struct State<'a> {
 
     //Data
     pub data: ColorSelectorData,
-    tree: Texture,
-    skeleton: Texture,
+    crate_tex: Texture,
 
-    pub cameraMatBuffer: CameraMatBuffer,
+    pub camera_mat_buffer: CameraMatBuffer,
     pub camera_buffer: wgpu::Buffer,
     pub camera_bind_group: wgpu::BindGroup,
 }
@@ -175,25 +123,20 @@ impl<'a> State<'a> {
                 label: Some("texture_bind_group_layout"),
             });
 
-        let mut tree = Texture::from_file(&device, &queue, include_bytes!("happy-tree.png"));
-        tree.create_texture_group(&device, &texture_bind_group_layout);
+        let mut crate_tex = Texture::from_file(&device, &queue, include_bytes!("crate.png"));
+        crate_tex.create_texture_group(&device, &texture_bind_group_layout);
 
-        let mut skeleton = Texture::from_file(&device, &queue, include_bytes!("skeleton_head.jpg"));
-        skeleton.create_texture_group(&device, &texture_bind_group_layout);
+        let mut camera_mat_buffer = CameraMatBuffer::new();
 
-        let mut cameraMatBuffer = CameraMatBuffer::new();
+        let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Camera Buffer"),
+            contents: bytemuck::cast_slice(&[camera_mat_buffer]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
 
-        let camera_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Camera Buffer"),
-                contents: bytemuck::cast_slice(&[cameraMatBuffer]),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            }
-        );
-
-        let camera_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
+        let camera_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Buffer {
@@ -202,23 +145,18 @@ impl<'a> State<'a> {
                         min_binding_size: None,
                     },
                     count: None,
-                }
-            ],
-            label: Some("camera_bind_group_layout"),
-        });
+                }],
+                label: Some("camera_bind_group_layout"),
+            });
 
         let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &camera_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: camera_buffer.as_entire_binding(),
-                }
-            ],
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: camera_buffer.as_entire_binding(),
+            }],
             label: Some("camera_bind_group"),
         });
-
-
 
         let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
 
@@ -284,6 +222,9 @@ impl<'a> State<'a> {
 
         let egui_renderer = EguiRenderer::new(&device, config.format, None, 1, &window);
 
+        let mut data = ColorSelectorData::new();
+        data.camera.aspect = (size.width as f32) / (size.height as f32);
+        data.camera.update_vectors();
         Self {
             window,
             surface,
@@ -291,14 +232,13 @@ impl<'a> State<'a> {
             queue,
             config,
             size,
-            data: ColorSelectorData::new(),
+            data,
             render_pipeline,
             vertex_buffer,
             index_buffer,
-            tree,
-            skeleton,
+            crate_tex,
             egui_renderer,
-            cameraMatBuffer,
+            camera_mat_buffer,
             camera_buffer,
             camera_bind_group,
         }
@@ -314,13 +254,14 @@ impl<'a> State<'a> {
             self.config.width = new_size.width;
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
+            self.data.camera.aspect = (new_size.width as f32)/ (new_size.height as f32);
         }
     }
 
     pub(crate) fn input(&mut self, event: &WindowEvent) -> bool {
         let event_resp = self.egui_renderer.handle_input(self.window, event);
-        if event_resp.1{
-           self.window.request_redraw();
+        if event_resp.1 {
+            self.window.request_redraw();
         }
         if event_resp.0 {
             return true;
@@ -330,12 +271,6 @@ impl<'a> State<'a> {
             WindowEvent::KeyboardInput {
                 event: key_event, ..
             } => {
-                if key_event.state == ElementState::Pressed
-                    && key_event.physical_key == PhysicalKey::Code(KeyCode::Space)
-                {
-                    self.data.toggle_texture = !self.data.toggle_texture;
-                    return true;
-                }
                 handle_wasd_input(key_event, &mut self.data.camera);
                 false
             }
@@ -347,7 +282,7 @@ impl<'a> State<'a> {
             WindowEvent::MouseInput { button, state, .. } if *button == MouseButton::Right => {
                 self.data.mouse_locked = !self.data.mouse_locked;
                 true
-            },
+            }
             _ => false,
         }
     }
@@ -363,16 +298,18 @@ impl<'a> State<'a> {
                 }
                 false
             }
-            _ => {
-                false
-            }
+            _ => false,
         }
     }
 
     pub(crate) fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
-
-        self.cameraMatBuffer.update(&self.data.camera);
-        self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.cameraMatBuffer]));
+        self.data.camera.move_update();
+        self.camera_mat_buffer.update(&self.data.camera);
+        self.queue.write_buffer(
+            &self.camera_buffer,
+            0,
+            bytemuck::cast_slice(&[self.camera_mat_buffer]),
+        );
         self.window.set_cursor_visible(!self.data.mouse_locked);
 
         let output = self.surface.get_current_texture()?;
@@ -401,14 +338,8 @@ impl<'a> State<'a> {
                 timestamp_writes: None,
             });
 
-            let bind_group = if self.data.toggle_texture {
-                self.tree.get_bind_group()
-            } else {
-                self.skeleton.get_bind_group()
-            };
-
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(0, bind_group, &[]);
+            render_pass.set_bind_group(0, self.crate_tex.get_bind_group(), &[]);
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
@@ -427,7 +358,7 @@ impl<'a> State<'a> {
             &self.window,
             &view,
             screen_descriptor,
-            |ui| gui::GUI(&mut self.data, ui),
+            |ui| gui::gui(&mut self.data, ui),
         );
 
         self.queue.submit(std::iter::once(encoder.finish()));
@@ -443,32 +374,63 @@ fn handle_wasd_input(event: &KeyEvent, camera: &mut Camera) {
             state: ElementState::Pressed,
             physical_key: PhysicalKey::Code(KeyCode::KeyW),
             ..
-        } => camera.move_forward(),
+        } => camera.move_front_back = 1.0,
+
+        KeyEvent {
+            state: ElementState::Released,
+            physical_key: PhysicalKey::Code(KeyCode::KeyW),
+            ..
+        } => camera.move_front_back = 0.0,
         KeyEvent {
             state: ElementState::Pressed,
             physical_key: PhysicalKey::Code(KeyCode::KeyS),
             ..
-        } => camera.move_backward(),
+        } => camera.move_front_back = -1.0,
+        KeyEvent {
+            state: ElementState::Released,
+            physical_key: PhysicalKey::Code(KeyCode::KeyS),
+            ..
+        } => camera.move_front_back = 0.0,
         KeyEvent {
             state: ElementState::Pressed,
             physical_key: PhysicalKey::Code(KeyCode::KeyA),
             ..
-        } => camera.move_left(),
+        } => camera.move_left_right = -1.0,
+        KeyEvent {
+            state: ElementState::Released,
+            physical_key: PhysicalKey::Code(KeyCode::KeyA),
+            ..
+        } => camera.move_left_right = 0.0,
         KeyEvent {
             state: ElementState::Pressed,
             physical_key: PhysicalKey::Code(KeyCode::KeyD),
             ..
-        } => camera.move_right(),
+        } => camera.move_left_right = 1.0,
+        KeyEvent {
+            state: ElementState::Released,
+            physical_key: PhysicalKey::Code(KeyCode::KeyD),
+            ..
+        } => camera.move_left_right = 0.0,
         KeyEvent {
             state: ElementState::Pressed,
             physical_key: PhysicalKey::Code(KeyCode::KeyQ),
             ..
-        } => camera.move_down(),
+        } => camera.move_up_down = -1.0,
+        KeyEvent {
+            state: ElementState::Released,
+            physical_key: PhysicalKey::Code(KeyCode::KeyQ),
+            ..
+        } => camera.move_up_down = 0.0,
         KeyEvent {
             state: ElementState::Pressed,
             physical_key: PhysicalKey::Code(KeyCode::KeyE),
             ..
-        } => camera.move_up(),
+        } => camera.move_up_down = 1.0,
+        KeyEvent {
+            state: ElementState::Released,
+            physical_key: PhysicalKey::Code(KeyCode::KeyE),
+            ..
+        } => camera.move_up_down = 0.0,
         KeyEvent {
             state: ElementState::Pressed,
             physical_key: PhysicalKey::Code(KeyCode::KeyR),
@@ -476,8 +438,4 @@ fn handle_wasd_input(event: &KeyEvent, camera: &mut Camera) {
         } => camera.reset(),
         _ => {}
     }
-}
-
-fn handle_key_event(event: &KeyEvent) {
-    info!("Key event: {:?}", event);
 }
