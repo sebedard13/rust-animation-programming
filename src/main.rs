@@ -14,9 +14,8 @@ use egui_winit::winit::{
     event::*,
     event_loop::EventLoop,
     keyboard::{KeyCode, PhysicalKey},
-    window::Window,
 };
-use log::{error, info, log, warn};
+use log::{error, warn};
 
 use egui_wgpu::wgpu;
 

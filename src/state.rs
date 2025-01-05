@@ -1,20 +1,18 @@
+use crate::camera::{Camera, CameraMatBuffer};
 use crate::data::ColorSelectorData;
+use crate::gui;
 use crate::gui::EguiRenderer;
+use crate::model::{Vertex, INDICES, VERTICES};
 use crate::texture::Texture;
 use egui_wgpu::wgpu::util::DeviceExt;
 use egui_wgpu::wgpu::Adapter;
-use egui_winit::winit::dpi::{PhysicalPosition, PhysicalSize};
-use egui_winit::winit::event::{
-    DeviceEvent, ElementState, Event, KeyEvent, MouseButton, WindowEvent,
-};
-use egui_winit::winit::keyboard::{Key, KeyCode, PhysicalKey};
-use egui_winit::winit::window::Window;
-use log::info;
-
-use crate::camera::{Camera, CameraMatBuffer};
-use crate::gui;
-use crate::model::{Vertex, INDICES, VERTICES};
 use egui_wgpu::{wgpu, ScreenDescriptor};
+use egui_winit::winit::dpi::PhysicalSize;
+use egui_winit::winit::event::{
+    DeviceEvent, ElementState, KeyEvent, MouseButton, WindowEvent,
+};
+use egui_winit::winit::keyboard::{KeyCode, PhysicalKey};
+use egui_winit::winit::window::Window;
 
 pub struct State<'a> {
     surface: wgpu::Surface<'a>,
@@ -126,7 +124,7 @@ impl<'a> State<'a> {
         let mut crate_tex = Texture::from_file(&device, &queue, include_bytes!("crate.png"));
         crate_tex.create_texture_group(&device, &texture_bind_group_layout);
 
-        let mut camera_mat_buffer = CameraMatBuffer::new();
+        let camera_mat_buffer = CameraMatBuffer::new();
 
         let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Camera Buffer"),
@@ -278,8 +276,8 @@ impl<'a> State<'a> {
                 self.data.save_mouse_pos(position);
                 true
             }
-            WindowEvent::MouseInput { button, state, .. } if *button == MouseButton::Left => true,
-            WindowEvent::MouseInput { button, state, .. } if *button == MouseButton::Right => {
+            WindowEvent::MouseInput { button, .. } if *button == MouseButton::Left => true,
+            WindowEvent::MouseInput { button,  .. } if *button == MouseButton::Right => {
                 self.data.mouse_locked = !self.data.mouse_locked;
                 true
             }

@@ -10,13 +10,13 @@ pub fn gui(data: &mut ColorSelectorData, ui: &Context) {
         .resizable(true)
         .movable(true)
         .anchor(Align2::LEFT_TOP, [2.0, 2.0])
-        .show(&ui, |mut ui| {
-            let mut newFPS = 0.0;
+        .show(&ui, |ui| {
+            let mut new_fps = 0.0;
             if data.rd_frame_time > 0.0 {
-                newFPS = 1.0 / data.rd_frame_time;
+                new_fps = 1.0 / data.rd_frame_time;
             }
             data.current_fps = (0.98 *  data.current_fps) +
-                (1.0 - 0.98) * newFPS;
+                (1.0 - 0.98) * new_fps;
 
             ui.label(format!("FPS {:.2}", data.current_fps));
 

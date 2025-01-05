@@ -1,5 +1,4 @@
 use glam::{Mat4, Vec3};
-use log::{info, log};
 
 #[rustfmt::skip]
 pub const OPENGL_TO_WGPU_MATRIX: Mat4 = Mat4::from_cols_array(&[
