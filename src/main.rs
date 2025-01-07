@@ -4,6 +4,8 @@ mod gui;
 mod state;
 mod texture;
 mod model;
+mod arrow_model;
+mod arrow_renderer;
 
 use crate::state::State;
 use anyhow::Context;

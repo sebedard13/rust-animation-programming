@@ -13,6 +13,7 @@ use egui_winit::winit::event::{
 };
 use egui_winit::winit::keyboard::{KeyCode, PhysicalKey};
 use egui_winit::winit::window::Window;
+use crate::arrow_renderer::ArrowRenderer;
 
 pub struct State<'a> {
     surface: wgpu::Surface<'a>,
@@ -38,6 +39,8 @@ pub struct State<'a> {
     pub camera_mat_buffer: CameraMatBuffer,
     pub camera_buffer: wgpu::Buffer,
     pub camera_bind_group: wgpu::BindGroup,
+    
+    pub arrow_renderer: ArrowRenderer,
 }
 
 impl<'a> State<'a> {
@@ -223,6 +226,8 @@ impl<'a> State<'a> {
         let mut data = ColorSelectorData::new();
         data.camera.aspect = (size.width as f32) / (size.height as f32);
         data.camera.update_vectors();
+        
+        let arrow_renderer = ArrowRenderer::new(&device, &camera_bind_group_layout, &config, &mut data);
         Self {
             window,
             surface,
@@ -239,6 +244,7 @@ impl<'a> State<'a> {
             camera_mat_buffer,
             camera_buffer,
             camera_bind_group,
+            arrow_renderer
         }
     }
 
@@ -341,7 +347,9 @@ impl<'a> State<'a> {
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-            render_pass.draw_indexed(0..INDICES.len() as u32, 0, 0..1)
+            render_pass.draw_indexed(0..INDICES.len() as u32, 0, 0..1);
+        
+            self.arrow_renderer.render(&mut render_pass, &self.camera_bind_group, &mut self.data);
         }
 
         let screen_descriptor = ScreenDescriptor {
