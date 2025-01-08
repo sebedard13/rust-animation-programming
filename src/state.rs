@@ -1,5 +1,5 @@
 use crate::camera::{Camera, CameraMatBuffer};
-use crate::data::ColorSelectorData;
+use crate::data::UserDomain;
 use crate::gui;
 use crate::gui::EguiRenderer;
 use crate::model::{Vertex, INDICES, VERTICES};
@@ -33,7 +33,7 @@ pub struct State<'a> {
     egui_renderer: EguiRenderer,
 
     //Data
-    pub data: ColorSelectorData,
+    pub data: UserDomain,
     crate_tex: Texture,
 
     pub camera_mat_buffer: CameraMatBuffer,
@@ -223,7 +223,7 @@ impl<'a> State<'a> {
 
         let egui_renderer = EguiRenderer::new(&device, config.format, None, 1, &window);
 
-        let mut data = ColorSelectorData::new();
+        let mut data = UserDomain::new();
         data.camera.aspect = (size.width as f32) / (size.height as f32);
         data.camera.update_vectors();
         

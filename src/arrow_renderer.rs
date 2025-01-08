@@ -2,7 +2,7 @@ use std::mem;
 use wgpu::{BindGroupLayout, Buffer, Device, RenderPass, RenderPipeline, SurfaceConfiguration};
 use wgpu::util::{DeviceExt, RenderEncoder};
 use crate::arrow_model::ArrowVertex;
-use crate::data::ColorSelectorData;
+use crate::data::UserDomain;
 
 #[derive(Clone)]
 pub struct ArrowInstance {
@@ -74,7 +74,7 @@ pub struct ArrowRenderer {
 }
 
 impl ArrowRenderer {
-    pub fn new(device: &Device, camera_bind_group_layout: &BindGroupLayout, config: &SurfaceConfiguration, data: &mut ColorSelectorData ) -> Self {
+    pub fn new(device: &Device, camera_bind_group_layout: &BindGroupLayout, config: &SurfaceConfiguration, data: &mut UserDomain) -> Self {
 
         let shader = device.create_shader_module(wgpu::include_wgsl!("arrow.wgsl"));
 
@@ -157,7 +157,7 @@ impl ArrowRenderer {
         }
     }
 
-    pub fn render(&mut self, render_pass: &mut RenderPass, camera_bind_group: &wgpu::BindGroup,  data:&mut ColorSelectorData) {
+    pub fn render(&mut self, render_pass: &mut RenderPass, camera_bind_group: &wgpu::BindGroup,  data:&mut UserDomain) {
         if self.instance_len == 0{
             return;
         }
