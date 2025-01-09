@@ -1,3 +1,4 @@
+use std::mem;
 use crate::camera::{Camera, CameraMatBuffer};
 use crate::data::UserDomain;
 use crate::gui;
@@ -13,7 +14,9 @@ use egui_winit::winit::event::{
 };
 use egui_winit::winit::keyboard::{KeyCode, PhysicalKey};
 use egui_winit::winit::window::Window;
+use glam::Mat4;
 use crate::arrow_renderer::ArrowRenderer;
+use crate::color::color_from_rgba_hex;
 
 pub struct State<'a> {
     surface: wgpu::Surface<'a>,
@@ -41,6 +44,7 @@ pub struct State<'a> {
     pub camera_bind_group: wgpu::BindGroup,
     
     pub arrow_renderer: ArrowRenderer,
+    pub model_mat_buffer: wgpu::Buffer,
 }
 
 impl<'a> State<'a> {
@@ -135,6 +139,41 @@ impl<'a> State<'a> {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
+        let identity = Mat4::IDENTITY.to_cols_array_2d();
+        let model_mat_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Model transform"),
+            contents: bytemuck::cast_slice(&identity),
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let mat4_buffer_layout = wgpu::VertexBufferLayout {
+            array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &[
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 5,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
+                wgpu::VertexAttribute {
+                    offset: size_of::<[f32; 4]>() as wgpu::BufferAddress,
+                    shader_location: 6,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
+                wgpu::VertexAttribute {
+                    offset: size_of::<[f32; 8]>() as wgpu::BufferAddress,
+                    shader_location: 7,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
+                wgpu::VertexAttribute {
+                    offset: size_of::<[f32; 12]>() as wgpu::BufferAddress,
+                    shader_location: 8,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
+
+            ],
+        };
+
         let camera_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[wgpu::BindGroupLayoutEntry {
@@ -174,7 +213,7 @@ impl<'a> State<'a> {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: None,
-                buffers: &[Vertex::desc()],
+                buffers: &[Vertex::desc(), mat4_buffer_layout],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(wgpu::FragmentState {
@@ -244,6 +283,7 @@ impl<'a> State<'a> {
             camera_mat_buffer,
             camera_buffer,
             camera_bind_group,
+            model_mat_buffer,
             arrow_renderer
         }
     }
@@ -309,12 +349,15 @@ impl<'a> State<'a> {
     pub(crate) fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         self.data.camera.move_update();
         self.camera_mat_buffer.update(&self.data.camera);
+       
         self.queue.write_buffer(
             &self.camera_buffer,
             0,
             bytemuck::cast_slice(&[self.camera_mat_buffer]),
         );
         self.window.set_cursor_visible(!self.data.mouse_locked);
+        
+        self.queue.write_buffer(&self.model_mat_buffer, 0,  bytemuck::cast_slice(&self.data.calculate_model_matrix().to_cols_array_2d()));
 
         let output = self.surface.get_current_texture()?;
         let view = output
@@ -333,7 +376,7 @@ impl<'a> State<'a> {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::WHITE),
+                        load: wgpu::LoadOp::Clear(color_from_rgba_hex(0x191919FF)),
                         store: wgpu::StoreOp::Store,
                     },
                 })],
@@ -346,10 +389,11 @@ impl<'a> State<'a> {
             render_pass.set_bind_group(0, self.crate_tex.get_bind_group(), &[]);
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+            render_pass.set_vertex_buffer(1, self.model_mat_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
             render_pass.draw_indexed(0..INDICES.len() as u32, 0, 0..1);
         
-            self.arrow_renderer.render(&mut render_pass, &self.camera_bind_group, &mut self.data);
+            self.arrow_renderer.render(&mut render_pass, &self.camera_bind_group, &mut self.data, &self.device);
         }
 
         let screen_descriptor = ScreenDescriptor {

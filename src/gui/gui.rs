@@ -1,4 +1,4 @@
-use egui::{Align2, Context};
+use egui::{Align2, Context, Slider};
 use crate::data::UserDomain;
 
 pub fn gui(user_domain: &mut UserDomain, ui: &Context) {
@@ -21,10 +21,62 @@ pub fn gui(user_domain: &mut UserDomain, ui: &Context) {
             ui.label(format!("FPS {:.2}", user_domain.current_fps));
 
             ui.separator();
-            ui.label("Camera");
-            ui.add(egui::Slider::new(&mut user_domain.camera.fovy, 30.0..=120.0).text("Fov"));
-            ui.label(format!("Azimuth: {:.2}", user_domain.camera.view_azimuth));
-            ui.label(format!("Elevation: {:.2}", user_domain.camera.view_elevation));
-            ui.label(format!("Position: ({:.2}, {:.2}, {:.2})", user_domain.camera.position.x, user_domain.camera.position.y, user_domain.camera.position.z));
+            ui.collapsing("Camera", |ui|{
+                ui.add(Slider::new(&mut user_domain.camera.fovy, 30.0..=120.0).text("Fov"));
+                ui.label(format!("Azimuth: {:.2}", user_domain.camera.view_azimuth));
+                ui.label(format!("Elevation: {:.2}", user_domain.camera.view_elevation));
+                ui.label(format!("Position: ({:.2}, {:.2}, {:.2})", user_domain.camera.position.x, user_domain.camera.position.y, user_domain.camera.position.z));
+            });
+            
+            ui.separator();
+            ui.collapsing("Arrows", |ui|{
+                ui.add(Slider::new(&mut user_domain.interpolation, 0.0..=1.0).text("Interpolation"));
+                ui.checkbox(&mut user_domain.draw_world_coordinates, "Draw World Coordinates");
+                ui.checkbox(&mut user_domain.draw_model_coordinates, "Draw Model Coordinates");
+                ui.label("Start rotation");
+                ui.horizontal(|ui|{
+                    ui.add(Slider::new(&mut user_domain.start_rotation.x, -180.0..=180.0));
+                    ui.add(Slider::new(&mut user_domain.start_rotation.y, -180.0..=180.0));
+                    ui.add(Slider::new(&mut user_domain.start_rotation.z, -180.0..=180.0));
+                });
+                ui.label("End rotation");
+                ui.horizontal(|ui|{
+                    ui.add(Slider::new(&mut user_domain.end_rotation.x, -180.0..=180.0));
+                    ui.add(Slider::new(&mut user_domain.end_rotation.y, -180.0..=180.0));
+                    ui.add(Slider::new(&mut user_domain.end_rotation.z, -180.0..=180.0));
+                });
+                
+                ui.checkbox(&mut user_domain.draw_spline, "Draw Spline");
+                ui.label("Start pos");
+                ui.horizontal(|ui|{
+                    ui.add(Slider::new(&mut user_domain.start_pos.x, -10.0..=10.0));
+                    ui.add(Slider::new(&mut user_domain.start_pos.y, -10.0..=10.0));
+                    ui.add(Slider::new(&mut user_domain.start_pos.z, -10.0..=10.0)); 
+                });
+                ui.label("Start tangent");
+                ui.horizontal(|ui|{
+                    ui.add(Slider::new(&mut user_domain.start_tangent.x, -10.0..=10.0));
+                    ui.add(Slider::new(&mut user_domain.start_tangent.y, -10.0..=10.0));
+                    ui.add(Slider::new(&mut user_domain.start_tangent.z, -10.0..=10.0));
+                });
+                ui.label("End pos");
+                ui.horizontal(|ui|{
+                    ui.add(Slider::new(&mut user_domain.end_pos.x, -10.0..=10.0));
+                    ui.add(Slider::new(&mut user_domain.end_pos.y, -10.0..=10.0));
+                    ui.add(Slider::new(&mut user_domain.end_pos.z, -10.0..=10.0));
+                });
+                ui.label("End tangent");
+                ui.horizontal(|ui|{
+                    ui.add(Slider::new(&mut user_domain.end_tangent.x, -10.0..=10.0));
+                    ui.add(Slider::new(&mut user_domain.end_tangent.y, -10.0..=10.0));
+                    ui.add(Slider::new(&mut user_domain.end_tangent.z, -10.0..=10.0));
+                });
+             
+                
+                
+               
+            });
+           
+           
         });
 }

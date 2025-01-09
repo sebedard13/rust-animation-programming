@@ -6,6 +6,8 @@ mod texture;
 mod model;
 mod arrow_model;
 mod arrow_renderer;
+mod hermite_spline;
+mod color;
 
 use crate::state::State;
 use anyhow::Context;

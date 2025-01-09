@@ -157,7 +157,22 @@ impl ArrowRenderer {
         }
     }
 
-    pub fn render(&mut self, render_pass: &mut RenderPass, camera_bind_group: &wgpu::BindGroup,  data:&mut UserDomain) {
+    pub fn render(&mut self, render_pass: &mut RenderPass, camera_bind_group: &wgpu::BindGroup,  data:&mut UserDomain, device: &Device) {
+        data.calculate_arrow();
+        if data.reload_arrow{
+            let instance_data: Vec<ArrowInstanceRaw> = data.load_arrow().iter().map(|a| a.to_raw()).collect();
+            self.instance_buffer.destroy();
+            self.instance_buffer = device.create_buffer_init(
+                &wgpu::util::BufferInitDescriptor {
+                    label: Some("Arrow Instance Buffer"),
+                    contents: bytemuck::cast_slice(&instance_data),
+                    usage: wgpu::BufferUsages::VERTEX,
+                }
+            );
+            self.instance_len = instance_data.len();
+        }
+        
+        
         if self.instance_len == 0{
             return;
         }
