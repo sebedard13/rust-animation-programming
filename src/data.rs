@@ -155,4 +155,13 @@ impl UserDomain {
         self.reload_arrow = false;
         arrows
     }
+
+    pub fn load_line(&self) -> Vec<ArrowInstance> {
+        let mut arrows = Vec::new();
+        arrows.push(ArrowInstance {
+            model: Mat4::from_scale(glam::Vec3::new(1.0, 5.0, 1.00)),
+            color: glam::Vec4::new(1.0, 1.0, 1.0, 1.0),
+        });
+        arrows
+    }
 }

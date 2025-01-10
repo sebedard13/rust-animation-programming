@@ -30,7 +30,7 @@ pub async fn run() -> Result<()> {
         .init();
     let event_loop = EventLoop::new().context("Error creating the event loop")?;
     let window_attributes = WindowAttributes::default()
-        .with_title("Streamline CFD")
+        .with_title("Rust animation programming")
         .with_inner_size(Size::Physical(PhysicalSize::new(800, 600)));
     let window = event_loop.create_window(window_attributes)?;
 

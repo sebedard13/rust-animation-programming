@@ -1,8 +1,8 @@
-use std::mem;
-use wgpu::{BindGroupLayout, Buffer, Device, RenderPass, RenderPipeline, SurfaceConfiguration};
-use wgpu::util::{DeviceExt, RenderEncoder};
 use crate::arrow_model::ArrowVertex;
 use crate::data::UserDomain;
+use std::mem;
+use wgpu::util::{DeviceExt, RenderEncoder};
+use wgpu::{BindGroupLayout, Buffer, Device, RenderPass, RenderPipeline, SurfaceConfiguration};
 
 #[derive(Clone)]
 pub struct ArrowInstance {
@@ -32,7 +32,6 @@ impl ArrowInstanceRaw {
             array_stride: mem::size_of::<ArrowInstanceRaw>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Instance,
             attributes: &[
-               
                 wgpu::VertexAttribute {
                     offset: 0,
                     shader_location: 5,
@@ -66,16 +65,27 @@ impl ArrowInstanceRaw {
 
 pub struct ArrowRenderer {
     pub render_pipeline: RenderPipeline,
-    pub vertex_buffer: Buffer,
-    pub index_buffer: Buffer,
-    pub indice_len: usize,
-    pub instance_buffer:  Buffer,
-    pub instance_len: usize,
+
+    pub arrow_vertex_buffer: Buffer,
+    pub arrow_index_buffer: Buffer,
+    pub arrow_indice_len: usize,
+    pub arrow_instance_buffer: Buffer,
+    pub arrow_instance_len: usize,
+
+    pub line_vertex_buffer: Buffer,
+    pub line_index_buffer: Buffer,
+    pub line_indice_len: usize,
+    pub line_instance_buffer: Buffer,
+    pub line_instance_len: usize,
 }
 
 impl ArrowRenderer {
-    pub fn new(device: &Device, camera_bind_group_layout: &BindGroupLayout, config: &SurfaceConfiguration, data: &mut UserDomain) -> Self {
-
+    pub fn new(
+        device: &Device,
+        camera_bind_group_layout: &BindGroupLayout,
+        config: &SurfaceConfiguration,
+        data: &mut UserDomain,
+    ) -> Self {
         let shader = device.create_shader_module(wgpu::include_wgsl!("arrow.wgsl"));
 
         let render_pipeline_layout =
@@ -125,63 +135,110 @@ impl ArrowRenderer {
 
         let arrow_model = crate::arrow_model::get_arrow_model();
 
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let arrow_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Arrow Vertex Buffer"),
             contents: bytemuck::cast_slice(arrow_model.0.as_slice()),
             usage: wgpu::BufferUsages::VERTEX,
         });
 
-        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let arrow_index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Arrow Index Buffer"),
             contents: bytemuck::cast_slice(arrow_model.1.as_slice()),
             usage: wgpu::BufferUsages::INDEX,
         });
 
-        let instance_data: Vec<ArrowInstanceRaw> = data.load_arrow().iter().map(|a| a.to_raw()).collect();
+        let arrow_instance_data: Vec<ArrowInstanceRaw> =
+            data.load_arrow().iter().map(|a| a.to_raw()).collect();
 
-        let instance_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Arrow Instance Buffer"),
-                contents: bytemuck::cast_slice(&instance_data),
-                usage: wgpu::BufferUsages::VERTEX,
-            }
-        );
+        let arrow_instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Arrow Instance Buffer"),
+            contents: bytemuck::cast_slice(&arrow_instance_data),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
+        let line_model = crate::arrow_model::get_line_model();
+
+        let line_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Line Vertex Buffer"),
+            contents: bytemuck::cast_slice(line_model.0.as_slice()),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
+        let line_index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Line Index Buffer"),
+            contents: bytemuck::cast_slice(line_model.1.as_slice()),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+
+        let line_instance_data: Vec<ArrowInstanceRaw> =
+            data.load_line().iter().map(|a| a.to_raw()).collect();
+
+        let line_instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Line Instance Buffer"),
+            contents: bytemuck::cast_slice(&line_instance_data),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
 
         Self {
             render_pipeline,
-            vertex_buffer,
-            index_buffer,
-            indice_len: arrow_model.1.len(),
-            instance_buffer,
-            instance_len: instance_data.len(),
+            arrow_vertex_buffer,
+            arrow_index_buffer,
+            arrow_indice_len: arrow_model.1.len(),
+            arrow_instance_buffer,
+            arrow_instance_len: arrow_instance_data.len(),
+            line_vertex_buffer,
+            line_index_buffer,
+            line_indice_len: line_model.1.len(),
+            line_instance_buffer,
+            line_instance_len: line_instance_data.len(),
         }
     }
 
-    pub fn render(&mut self, render_pass: &mut RenderPass, camera_bind_group: &wgpu::BindGroup,  data:&mut UserDomain, device: &Device) {
+    pub fn render(
+        &mut self,
+        render_pass: &mut RenderPass,
+        camera_bind_group: &wgpu::BindGroup,
+        data: &mut UserDomain,
+        device: &Device,
+    ) {
         data.calculate_arrow();
-        if data.reload_arrow{
-            let instance_data: Vec<ArrowInstanceRaw> = data.load_arrow().iter().map(|a| a.to_raw()).collect();
-            self.instance_buffer.destroy();
-            self.instance_buffer = device.create_buffer_init(
-                &wgpu::util::BufferInitDescriptor {
+        if data.reload_arrow {
+            let instance_data: Vec<ArrowInstanceRaw> =
+                data.load_arrow().iter().map(|a| a.to_raw()).collect();
+            self.arrow_instance_buffer.destroy();
+            self.arrow_instance_buffer =
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("Arrow Instance Buffer"),
                     contents: bytemuck::cast_slice(&instance_data),
                     usage: wgpu::BufferUsages::VERTEX,
-                }
-            );
-            self.instance_len = instance_data.len();
+                });
+            self.arrow_instance_len = instance_data.len();
         }
-        
-        
-        if self.instance_len == 0{
-            return;
-        }
-        
+
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, camera_bind_group, &[]);
-        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-        render_pass.draw_indexed(0..self.indice_len as u32, 0, 0..self.instance_len as u32);
+        if self.arrow_instance_len != 0 {
+            render_pass.set_vertex_buffer(0, self.arrow_vertex_buffer.slice(..));
+            render_pass
+                .set_index_buffer(self.arrow_index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.set_vertex_buffer(1, self.arrow_instance_buffer.slice(..));
+            render_pass.draw_indexed(
+                0..self.arrow_indice_len as u32,
+                0,
+                0..self.arrow_instance_len as u32,
+            );
+        }
+
+        if self.line_instance_len != 0 {
+            render_pass.set_vertex_buffer(0, self.line_vertex_buffer.slice(..));
+            render_pass
+                .set_index_buffer(self.line_index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.set_vertex_buffer(1, self.line_instance_buffer.slice(..));
+            render_pass.draw_indexed(
+                0..self.line_indice_len as u32,
+                0,
+                0..self.line_instance_len as u32,
+            );
+        }
     }
 }
