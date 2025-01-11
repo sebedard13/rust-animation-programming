@@ -1,6 +1,6 @@
 use crate::camera::{Camera, CameraMatBuffer};
 use crate::data::UserDomain;
-use crate::gui;
+use crate::{gui, texture};
 use crate::gui::EguiRenderer;
 use crate::model::{Vertex, INDICES, VERTICES};
 use crate::texture::Texture;
@@ -31,6 +31,8 @@ pub struct State<'a> {
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
+    
+    depth_texture: Texture,
 
     egui_renderer: EguiRenderer,
 
@@ -129,6 +131,9 @@ impl<'a> State<'a> {
 
         let mut crate_tex = Texture::from_file(&device, &queue, include_bytes!("crate.png"));
         crate_tex.create_texture_group(&device, &texture_bind_group_layout);
+
+        let depth_texture = texture::create_depth_texture(&device, &config);
+
 
         let camera_mat_buffer = CameraMatBuffer::new();
 
@@ -237,7 +242,13 @@ impl<'a> State<'a> {
                 // Requires Features::CONSERVATIVE_RASTERIZATION
                 conservative: false,
             },
-            depth_stencil: None,
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: wgpu::TextureFormat::Depth32Float,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less, 
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
             multisample: wgpu::MultisampleState {
                 count: 1,
                 mask: !0,
@@ -278,6 +289,7 @@ impl<'a> State<'a> {
             vertex_buffer,
             index_buffer,
             crate_tex,
+            depth_texture,
             egui_renderer,
             camera_mat_buffer,
             camera_buffer,
@@ -297,6 +309,7 @@ impl<'a> State<'a> {
             self.config.width = new_size.width;
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
+            self.depth_texture = texture::create_depth_texture(&self.device, &self.config);
             self.data.camera.aspect = (new_size.width as f32)/ (new_size.height as f32);
         }
     }
@@ -379,7 +392,14 @@ impl<'a> State<'a> {
                         store: wgpu::StoreOp::Store,
                     },
                 })],
-                depth_stencil_attachment: None,
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth_texture.texture,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
