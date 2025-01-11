@@ -1,10 +1,10 @@
 use crate::arrow_model::ArrowVertex;
 use crate::data::UserDomain;
-use std::mem;
-use wgpu::util::{DeviceExt, RenderEncoder};
+use wgpu::util::DeviceExt;
 use wgpu::{BindGroupLayout, Buffer, Device, RenderPass, RenderPipeline, SurfaceConfiguration};
 
 #[derive(Clone)]
+#[derive(PartialEq)]
 pub struct ArrowInstance {
     pub model: glam::Mat4,
     pub color: glam::Vec4,
@@ -29,7 +29,7 @@ struct ArrowInstanceRaw {
 impl ArrowInstanceRaw {
     pub fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
-            array_stride: mem::size_of::<ArrowInstanceRaw>() as wgpu::BufferAddress,
+            array_stride: size_of::<ArrowInstanceRaw>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Instance,
             attributes: &[
                 wgpu::VertexAttribute {
@@ -38,23 +38,23 @@ impl ArrowInstanceRaw {
                     format: wgpu::VertexFormat::Float32x4,
                 },
                 wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 4]>() as wgpu::BufferAddress,
+                    offset: size_of::<[f32; 4]>() as wgpu::BufferAddress,
                     shader_location: 6,
                     format: wgpu::VertexFormat::Float32x4,
                 },
                 wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 8]>() as wgpu::BufferAddress,
+                    offset: size_of::<[f32; 8]>() as wgpu::BufferAddress,
                     shader_location: 7,
                     format: wgpu::VertexFormat::Float32x4,
                 },
                 wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 12]>() as wgpu::BufferAddress,
+                    offset: size_of::<[f32; 12]>() as wgpu::BufferAddress,
                     shader_location: 8,
                     format: wgpu::VertexFormat::Float32x4,
                 },
                 //color
                 wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 16]>() as wgpu::BufferAddress,
+                    offset: size_of::<[f32; 16]>() as wgpu::BufferAddress,
                     shader_location: 9,
                     format: wgpu::VertexFormat::Float32x4,
                 },

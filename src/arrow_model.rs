@@ -1,4 +1,3 @@
-use log::{info, log};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]

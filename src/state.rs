@@ -1,4 +1,3 @@
-use std::mem;
 use crate::camera::{Camera, CameraMatBuffer};
 use crate::data::UserDomain;
 use crate::gui;

@@ -2,7 +2,7 @@ use crate::arrow_renderer::ArrowInstance;
 use crate::camera::Camera;
 use crate::hermite_spline::hermite_spline;
 use egui_winit::winit::dpi::PhysicalPosition;
-use glam::{EulerRot, Mat4, Quat};
+use glam::{EulerRot, Mat4, Quat, Vec3};
 
 pub struct UserDomain {
     pub mouse_locked: bool,
@@ -12,21 +12,21 @@ pub struct UserDomain {
     pub camera: Camera,
 
     pub arrow3d: Vec<Mat4>,
+    pub lines: Vec<ArrowInstance>,
 
     pub draw_world_coordinates: bool,
     pub draw_model_coordinates: bool,
 
     pub interpolation: f32,
-    pub start_rotation: glam::Vec3,
-    pub end_rotation: glam::Vec3,
+    pub start_rotation: Vec3,
+    pub end_rotation: Vec3,
 
     pub draw_spline: bool,
-    pub last_draw_spline: bool,
 
-    pub start_pos: glam::Vec3,
-    pub start_tangent: glam::Vec3,
-    pub end_pos: glam::Vec3,
-    pub end_tangent: glam::Vec3,
+    pub start_pos: Vec3,
+    pub start_tangent: Vec3,
+    pub end_pos: Vec3,
+    pub end_tangent: Vec3,
 }
 
 impl UserDomain {
@@ -37,21 +37,21 @@ impl UserDomain {
             rd_frame_time: 0.0,
             current_fps: 0.0,
             camera: Camera::new(),
-            arrow3d: vec![Mat4::IDENTITY],
+            arrow3d: Vec::new(),
+            lines: Vec::new(),
 
             interpolation: 0.0,
 
             draw_world_coordinates: true,
             draw_model_coordinates: true,
-            start_rotation: glam::Vec3::new(0.0, 0.0, 0.0),
-            end_rotation: glam::Vec3::new(0.0, 0.0, 0.0),
+            start_rotation: Vec3::new(0.0, 0.0, 0.0),
+            end_rotation: Vec3::new(0.0, 0.0, 0.0),
 
             draw_spline: true,
-            last_draw_spline: true,
-            start_pos: glam::Vec3::new(-4.0, 1.0, -2.0),
-            start_tangent: glam::Vec3::new(-10.0, -8.0, 0.0),
-            end_pos: glam::Vec3::new(4.0, 2.0, -2.0),
-            end_tangent: glam::Vec3::new(-6.0, 5.0, -6.0),
+            start_pos: Vec3::new(-4.0, 1.0, -2.0),
+            start_tangent: Vec3::new(-10.0, -8.0, 8.0),
+            end_pos: Vec3::new(4.0, 2.0, -2.0),
+            end_tangent: Vec3::new(-6.0, 5.0, -6.0),
         }
     }
 
@@ -59,13 +59,13 @@ impl UserDomain {
         self.interpolation = 0.0;
         self.draw_world_coordinates = true;
         self.draw_model_coordinates = true;
-        self.start_rotation = glam::Vec3::new(0.0, 0.0, 0.0);
-        self.end_rotation = glam::Vec3::new(0.0, 0.0, 0.0);
+        self.start_rotation = Vec3::new(0.0, 0.0, 0.0);
+        self.end_rotation = Vec3::new(0.0, 0.0, 0.0);
         self.draw_spline = true;
-        self.start_pos = glam::Vec3::new(-4.0, 1.0, -2.0);
-        self.start_tangent = glam::Vec3::new(-10.0, -8.0, 0.0);
-        self.end_pos = glam::Vec3::new(4.0, 2.0, -2.0);
-        self.end_tangent = glam::Vec3::new(-6.0, 5.0, -6.0);
+        self.start_pos = Vec3::new(-4.0, 1.0, -2.0);
+        self.start_tangent = Vec3::new(-10.0, -8.0, 8.0);
+        self.end_pos = Vec3::new(4.0, 2.0, -2.0);
+        self.end_tangent = Vec3::new(-6.0, 5.0, -6.0);
     }
 
     pub(crate) fn save_mouse_pos(&mut self, pos: &PhysicalPosition<f64>) {
@@ -100,10 +100,10 @@ impl UserDomain {
         }
 
         if self.arrow3d == arrow3d {
-            return false;
+            false
         } else {
             self.arrow3d = arrow3d;
-            return true;
+            true
         }
     }
 
@@ -144,16 +144,16 @@ impl UserDomain {
             arrows.push(ArrowInstance {
                 model: *arrow
                     * Mat4::from_rotation_translation(
-                        glam::Quat::from_rotation_x(std::f32::consts::PI / 2.0),
-                        glam::Vec3::new(0.0, 0.0, 0.0),
+                        Quat::from_rotation_x(std::f32::consts::PI / 2.0),
+                        Vec3::new(0.0, 0.0, 0.0),
                     ),
                 color: glam::Vec4::new(0.0, 0.0, 1.0, 1.0),
             });
             arrows.push(ArrowInstance {
                 model: *arrow
                     * Mat4::from_rotation_translation(
-                        glam::Quat::from_rotation_z(-std::f32::consts::PI / 2.0),
-                        glam::Vec3::new(0.0, 0.0, 0.0),
+                        Quat::from_rotation_z(-std::f32::consts::PI / 2.0),
+                        Vec3::new(0.0, 0.0, 0.0),
                     ),
                 color: glam::Vec4::new(1.0, 0.0, 0.0, 1.0),
             });
@@ -163,23 +163,69 @@ impl UserDomain {
     }
 
     pub fn calculate_line(&mut self) -> bool {
-        if self.draw_spline != self.last_draw_spline {
-            self.last_draw_spline = self.draw_spline;
-            return true;
+        let l1 = Self::create_line_mat_instance(self.start_pos, self.start_tangent+ self.start_pos);
+        let l2 = Self::create_line_mat_instance(self.end_pos, self.end_tangent+ self.end_pos);
+
+        let mut lines = vec![
+            ArrowInstance {
+                model: l1,
+                color: glam::Vec4::new(0.0, 0.0, 0.0, 1.0),
+            },
+            ArrowInstance {
+                model: l2,
+                color: glam::Vec4::new(0.0, 0.0, 0.0, 1.0),
+            },
+        ];
+        let nb_lines_for_spline = 25;
+
+        for i in 0..=(nb_lines_for_spline - 1) {
+            let t0 = i as f32 / (nb_lines_for_spline as f32);
+            let t1 = (i + 1) as f32 / (nb_lines_for_spline as f32);
+            let p0 = hermite_spline(
+                t0,
+                self.start_pos,
+                self.start_tangent,
+                self.end_tangent,
+                self.end_pos,
+            );
+            let p1 = hermite_spline(
+                t1,
+                self.start_pos,
+                self.start_tangent,
+                self.end_tangent,
+                self.end_pos,
+            );
+            let l = Self::create_line_mat_instance(p0, p1);
+            lines.push(ArrowInstance {
+                model: l,
+                color: glam::Vec4::new(1.0, 1.0, 1.0, 1.0),
+            });
         }
-        return false;
+
+        if self.lines == lines {
+            false
+        } else {
+            self.lines = lines;
+            true
+        }
     }
 
     pub fn load_line(&self) -> Vec<ArrowInstance> {
-        if !self.draw_spline {
-            return Vec::new();
-        }
+        self.lines.clone()
+    }
 
-        let mut arrows = Vec::new();
-        arrows.push(ArrowInstance {
-            model: Mat4::from_scale(glam::Vec3::new(1.0, 5.0, 1.00)),
-            color: glam::Vec4::new(1.0, 1.0, 1.0, 1.0),
-        });
-        arrows
+    pub fn create_line_mat_instance(from: Vec3, to: Vec3) -> Mat4 {
+        let dir = to - from;
+        let len = dir.length();
+        let dir = dir.normalize();
+        let up = Vec3::NEG_Y;
+        let axis = dir.cross(up).normalize();
+        let angle = dir.dot(up).acos();
+        let rotation =
+            Mat4::from_rotation_translation(Quat::from_axis_angle(axis, angle), Vec3::ZERO);
+        let scale = Mat4::from_scale(Vec3::new(1.0, len, 1.0));
+        let translation = Mat4::from_translation(from);
+        let flip_y = Mat4::from_scale(Vec3::new(1.0, -1.0, 1.0));
+        translation * flip_y * rotation * scale
     }
 }
