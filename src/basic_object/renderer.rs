@@ -1,16 +1,16 @@
-use crate::arrow_model::ArrowVertex;
+use crate::basic_object::BasicVertex;
 use crate::data::UserDomain;
 use wgpu::util::DeviceExt;
 use wgpu::{BindGroupLayout, Buffer, Device, RenderPass, RenderPipeline, SurfaceConfiguration};
 
 #[derive(Clone)]
 #[derive(PartialEq)]
-pub struct ArrowInstance {
+pub struct BasicObjectInstance {
     pub model: glam::Mat4,
     pub color: glam::Vec4,
 }
 
-impl ArrowInstance {
+impl BasicObjectInstance {
     fn to_raw(&self) -> ArrowInstanceRaw {
         ArrowInstanceRaw {
             model: self.model.to_cols_array_2d(),
@@ -63,7 +63,7 @@ impl ArrowInstanceRaw {
     }
 }
 
-pub struct ArrowRenderer {
+pub struct BasicObjectRenderer {
     pub render_pipeline: RenderPipeline,
 
     pub arrow_vertex_buffer: Buffer,
@@ -79,14 +79,14 @@ pub struct ArrowRenderer {
     pub line_instance_len: usize,
 }
 
-impl ArrowRenderer {
+impl BasicObjectRenderer {
     pub fn new(
         device: &Device,
         camera_bind_group_layout: &BindGroupLayout,
         config: &SurfaceConfiguration,
         data: &mut UserDomain,
     ) -> Self {
-        let shader = device.create_shader_module(wgpu::include_wgsl!("arrow.wgsl"));
+        let shader = device.create_shader_module(wgpu::include_wgsl!("basic.wgsl"));
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -101,7 +101,7 @@ impl ArrowRenderer {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: None,
-                buffers: &[ArrowVertex::desc(), ArrowInstanceRaw::desc()],
+                buffers: &[BasicVertex::desc(), ArrowInstanceRaw::desc()],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(wgpu::FragmentState {
@@ -139,7 +139,7 @@ impl ArrowRenderer {
             cache: None,
         });
 
-        let arrow_model = crate::arrow_model::get_arrow_model();
+        let arrow_model = crate::basic_object::get_arrow_model();
 
         let arrow_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Arrow Vertex Buffer"),
@@ -162,7 +162,8 @@ impl ArrowRenderer {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
-        let line_model = crate::arrow_model::get_line_model();
+        
+        let line_model = crate::basic_object::get_line_model();
 
         let line_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Line Vertex Buffer"),

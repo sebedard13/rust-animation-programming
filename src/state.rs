@@ -14,7 +14,7 @@ use egui_winit::winit::event::{
 use egui_winit::winit::keyboard::{KeyCode, PhysicalKey};
 use egui_winit::winit::window::Window;
 use glam::Mat4;
-use crate::arrow_renderer::ArrowRenderer;
+use crate::basic_object::renderer::BasicObjectRenderer;
 use crate::color::color_from_rgba_hex;
 
 pub struct State<'a> {
@@ -23,9 +23,7 @@ pub struct State<'a> {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     pub(crate) size: PhysicalSize<u32>,
-    // The window must be declared after the surface so
-    // it gets dropped after it as the surface contains
-    // unsafe references to the window's resources.
+
     window: &'a Window,
 
     render_pipeline: wgpu::RenderPipeline,
@@ -44,7 +42,7 @@ pub struct State<'a> {
     pub camera_buffer: wgpu::Buffer,
     pub camera_bind_group: wgpu::BindGroup,
     
-    pub arrow_renderer: ArrowRenderer,
+    pub basic_object_renderer: BasicObjectRenderer,
     pub model_mat_buffer: wgpu::Buffer,
 }
 
@@ -276,7 +274,7 @@ impl<'a> State<'a> {
         data.camera.aspect = (size.width as f32) / (size.height as f32);
         data.camera.update_vectors();
         
-        let arrow_renderer = ArrowRenderer::new(&device, &camera_bind_group_layout, &config, &mut data);
+        let arrow_renderer = BasicObjectRenderer::new(&device, &camera_bind_group_layout, &config, &mut data);
         Self {
             window,
             surface,
@@ -295,7 +293,7 @@ impl<'a> State<'a> {
             camera_buffer,
             camera_bind_group,
             model_mat_buffer,
-            arrow_renderer
+            basic_object_renderer: arrow_renderer
         }
     }
 
@@ -412,7 +410,7 @@ impl<'a> State<'a> {
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
             render_pass.draw_indexed(0..INDICES.len() as u32, 0, 0..1);
         
-            self.arrow_renderer.render(&mut render_pass, &self.camera_bind_group, &mut self.data, &self.device);
+            self.basic_object_renderer.render(&mut render_pass, &self.camera_bind_group, &mut self.data, &self.device);
         }
 
         let screen_descriptor = ScreenDescriptor {

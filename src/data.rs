@@ -1,4 +1,4 @@
-use crate::arrow_renderer::ArrowInstance;
+use crate::basic_object::renderer::BasicObjectInstance;
 use crate::camera::Camera;
 use crate::hermite_spline::hermite_spline;
 use egui_winit::winit::dpi::PhysicalPosition;
@@ -12,7 +12,7 @@ pub struct UserDomain {
     pub camera: Camera,
 
     pub arrow3d: Vec<Mat4>,
-    pub lines: Vec<ArrowInstance>,
+    pub lines: Vec<BasicObjectInstance>,
 
     pub draw_world_coordinates: bool,
     pub draw_model_coordinates: bool,
@@ -134,14 +134,14 @@ impl UserDomain {
         Mat4::from_rotation_translation(rotation, pos)
     }
 
-    pub fn load_arrow(&mut self) -> Vec<ArrowInstance> {
+    pub fn load_arrow(&mut self) -> Vec<BasicObjectInstance> {
         let mut arrows = Vec::new();
         for arrow in self.arrow3d.iter() {
-            arrows.push(ArrowInstance {
+            arrows.push(BasicObjectInstance {
                 model: *arrow * Mat4::IDENTITY,
                 color: glam::Vec4::new(0.0, 1.0, 0.0, 1.0),
             });
-            arrows.push(ArrowInstance {
+            arrows.push(BasicObjectInstance {
                 model: *arrow
                     * Mat4::from_rotation_translation(
                         Quat::from_rotation_x(std::f32::consts::PI / 2.0),
@@ -149,7 +149,7 @@ impl UserDomain {
                     ),
                 color: glam::Vec4::new(0.0, 0.0, 1.0, 1.0),
             });
-            arrows.push(ArrowInstance {
+            arrows.push(BasicObjectInstance {
                 model: *arrow
                     * Mat4::from_rotation_translation(
                         Quat::from_rotation_z(-std::f32::consts::PI / 2.0),
@@ -167,11 +167,11 @@ impl UserDomain {
         let l2 = Self::create_line_mat_instance(self.end_pos, self.end_tangent+ self.end_pos);
 
         let mut lines = vec![
-            ArrowInstance {
+            BasicObjectInstance {
                 model: l1,
                 color: glam::Vec4::new(0.0, 0.0, 0.0, 1.0),
             },
-            ArrowInstance {
+            BasicObjectInstance {
                 model: l2,
                 color: glam::Vec4::new(0.0, 0.0, 0.0, 1.0),
             },
@@ -196,7 +196,7 @@ impl UserDomain {
                 self.end_pos,
             );
             let l = Self::create_line_mat_instance(p0, p1);
-            lines.push(ArrowInstance {
+            lines.push(BasicObjectInstance {
                 model: l,
                 color: glam::Vec4::new(1.0, 1.0, 1.0, 1.0),
             });
@@ -210,7 +210,7 @@ impl UserDomain {
         }
     }
 
-    pub fn load_line(&self) -> Vec<ArrowInstance> {
+    pub fn load_line(&self) -> Vec<BasicObjectInstance> {
         self.lines.clone()
     }
 
