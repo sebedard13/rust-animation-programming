@@ -1,8 +1,8 @@
 use crate::arrow_renderer::ArrowInstance;
 use crate::camera::Camera;
+use crate::hermite_spline::hermite_spline;
 use egui_winit::winit::dpi::PhysicalPosition;
 use glam::{EulerRot, Mat4, Quat};
-use crate::hermite_spline::hermite_spline;
 
 pub struct UserDomain {
     pub mouse_locked: bool,
@@ -12,7 +12,6 @@ pub struct UserDomain {
     pub camera: Camera,
 
     pub arrow3d: Vec<Mat4>,
-    pub reload_arrow: bool,
 
     pub draw_world_coordinates: bool,
     pub draw_model_coordinates: bool,
@@ -22,6 +21,8 @@ pub struct UserDomain {
     pub end_rotation: glam::Vec3,
 
     pub draw_spline: bool,
+    pub last_draw_spline: bool,
+
     pub start_pos: glam::Vec3,
     pub start_tangent: glam::Vec3,
     pub end_pos: glam::Vec3,
@@ -37,7 +38,6 @@ impl UserDomain {
             current_fps: 0.0,
             camera: Camera::new(),
             arrow3d: vec![Mat4::IDENTITY],
-            reload_arrow: true,
 
             interpolation: 0.0,
 
@@ -47,6 +47,7 @@ impl UserDomain {
             end_rotation: glam::Vec3::new(0.0, 0.0, 0.0),
 
             draw_spline: true,
+            last_draw_spline: true,
             start_pos: glam::Vec3::new(-4.0, 1.0, -2.0),
             start_tangent: glam::Vec3::new(-10.0, -8.0, 0.0),
             end_pos: glam::Vec3::new(4.0, 2.0, -2.0),
@@ -71,7 +72,7 @@ impl UserDomain {
         self.mouse_pos = pos.clone();
     }
 
-    pub fn calculate_arrow(&mut self) {
+    pub fn calculate_arrow(&mut self) -> bool {
         let mut arrow3d: Vec<Mat4> = Vec::new();
         if self.draw_world_coordinates {
             arrow3d.push(Mat4::IDENTITY);
@@ -98,22 +99,22 @@ impl UserDomain {
             ));
         }
 
-        if (self.arrow3d == arrow3d) {
-            self.reload_arrow = false;
+        if self.arrow3d == arrow3d {
+            return false;
         } else {
             self.arrow3d = arrow3d;
-            self.reload_arrow = true;
+            return true;
         }
     }
 
     pub fn calculate_model_matrix(&self) -> Mat4 {
-        let start_rotaton =  Quat::from_euler(
+        let start_rotaton = Quat::from_euler(
             EulerRot::ZYX,
             self.start_rotation.z.to_radians(),
             self.start_rotation.y.to_radians(),
             self.start_rotation.x.to_radians(),
         );
-        let end_rotaton =  Quat::from_euler(
+        let end_rotaton = Quat::from_euler(
             EulerRot::ZYX,
             self.end_rotation.z.to_radians(),
             self.end_rotation.y.to_radians(),
@@ -121,9 +122,15 @@ impl UserDomain {
         );
 
         let rotation = start_rotaton.slerp(end_rotaton, self.interpolation);
-        
-        let pos = hermite_spline(self.interpolation, self.start_pos, self.start_tangent, self.end_tangent, self.end_pos);
-        
+
+        let pos = hermite_spline(
+            self.interpolation,
+            self.start_pos,
+            self.start_tangent,
+            self.end_tangent,
+            self.end_pos,
+        );
+
         Mat4::from_rotation_translation(rotation, pos)
     }
 
@@ -152,11 +159,22 @@ impl UserDomain {
             });
         }
 
-        self.reload_arrow = false;
         arrows
     }
 
+    pub fn calculate_line(&mut self) -> bool {
+        if self.draw_spline != self.last_draw_spline {
+            self.last_draw_spline = self.draw_spline;
+            return true;
+        }
+        return false;
+    }
+
     pub fn load_line(&self) -> Vec<ArrowInstance> {
+        if !self.draw_spline {
+            return Vec::new();
+        }
+
         let mut arrows = Vec::new();
         arrows.push(ArrowInstance {
             model: Mat4::from_scale(glam::Vec3::new(1.0, 5.0, 1.00)),

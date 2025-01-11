@@ -201,8 +201,8 @@ impl ArrowRenderer {
         data: &mut UserDomain,
         device: &Device,
     ) {
-        data.calculate_arrow();
-        if data.reload_arrow {
+        
+        if data.calculate_arrow() {
             let instance_data: Vec<ArrowInstanceRaw> =
                 data.load_arrow().iter().map(|a| a.to_raw()).collect();
             self.arrow_instance_buffer.destroy();
@@ -213,6 +213,19 @@ impl ArrowRenderer {
                     usage: wgpu::BufferUsages::VERTEX,
                 });
             self.arrow_instance_len = instance_data.len();
+        }
+
+        if data.calculate_line(){
+            let instance_data: Vec<ArrowInstanceRaw> =
+                data.load_line().iter().map(|a| a.to_raw()).collect();
+            self.line_instance_buffer.destroy();
+            self.line_instance_buffer =
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Line Instance Buffer"),
+                    contents: bytemuck::cast_slice(&instance_data),
+                    usage: wgpu::BufferUsages::VERTEX,
+                });
+            self.line_instance_len = instance_data.len();
         }
 
         render_pass.set_pipeline(&self.render_pipeline);
