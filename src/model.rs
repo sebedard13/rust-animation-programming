@@ -1,10 +1,12 @@
 use egui_wgpu::wgpu;
+use glam::vec3;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub(crate) struct Vertex {
-    pub(crate) position: [f32; 3],
-    pub(crate) uv: [f32; 2],
+pub struct Vertex {
+    pub position: [f32; 3],
+    pub normal: [f32; 3],
+    pub uv: [f32; 2],
 }
 
 impl Vertex {
@@ -21,6 +23,11 @@ impl Vertex {
                 wgpu::VertexAttribute {
                     offset: size_of::<[f32; 3]>() as wgpu::BufferAddress,
                     shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: size_of::<[f32; 3]>() as wgpu::BufferAddress * 2,
+                    shader_location: 2,
                     format: wgpu::VertexFormat::Float32x2,
                 },
             ],
@@ -28,42 +35,52 @@ impl Vertex {
     }
 }
 
-pub const VERTICES: &[Vertex] = &[
-    // front
-    Vertex {
-        position: [-0.5, -0.5, 0.5],
-        uv: [0.0, 1.0],
-    },
-    Vertex {
-        position: [0.5, -0.5, 0.5],
-        uv: [1.0, 1.0],
-    },
-    Vertex {
-        position: [-0.5, 0.5, 0.5],
-        uv: [0.0, 0.0],
-    },
-    Vertex {
-        position: [0.5, 0.5, 0.5],
-        uv: [1.0, 0.0],
-    },
-    // back
-    Vertex {
-        position: [0.5, -0.5, -0.5],
-        uv: [0.0, 1.0],
-    },
-    Vertex {
-        position: [-0.5, -0.5, -0.5],
-        uv: [1.0, 1.0],
-    },
-    Vertex {
-        position: [0.5, 0.5, -0.5],
-        uv: [0.0, 0.0],
-    },
-    Vertex {
-        position: [-0.5, 0.5, -0.5],
-        uv: [1.0, 0.0],
-    },
-];
+pub fn VERTICES() -> Vec<Vertex> {
+    vec![
+        // front
+        Vertex {
+            position: [-0.5, -0.5, 0.5],
+            normal: vec3(-1.0, -1.0, 1.0).normalize().to_array(),
+            uv: [0.0, 1.0],
+        },
+        Vertex {
+            position: [0.5, -0.5, 0.5],
+            normal: vec3(1.0, -1.0, 1.0).normalize().to_array(),
+            uv: [1.0, 1.0],
+        },
+        Vertex {
+            position: [-0.5, 0.5, 0.5],
+            normal: vec3(-1.0, 1.0, 1.0).normalize().to_array(),
+            uv: [0.0, 0.0],
+        },
+        Vertex {
+            position: [0.5, 0.5, 0.5],
+            normal: vec3(1.0, 1.0, 1.0).normalize().to_array(),
+            uv: [1.0, 0.0],
+        },
+        // back
+        Vertex {
+            position: [0.5, -0.5, -0.5],
+            normal: vec3(1.0, -1.0, -1.0).normalize().to_array(),
+            uv: [0.0, 1.0],
+        },
+        Vertex {
+            position: [-0.5, -0.5, -0.5],
+            normal: vec3(-1.0, -1.0, -1.0).normalize().to_array(),
+            uv: [1.0, 1.0],
+        },
+        Vertex {
+            position: [0.5, 0.5, -0.5],
+            normal: vec3(1.0, 1.0, -1.0).normalize().to_array(),
+            uv: [0.0, 0.0],
+        },
+        Vertex {
+            position: [-0.5, 0.5, -0.5],
+            normal: vec3(-1.0, 1.0, -1.0).normalize().to_array(),
+            uv: [1.0, 0.0],
+        },
+    ]
+}
 pub const INDICES: &[u16] = &[
     0, 1, 2, 2, 1, 3, //front
     4, 5, 6, 6, 5, 7, //back

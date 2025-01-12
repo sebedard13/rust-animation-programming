@@ -258,7 +258,7 @@ impl<'a> State<'a> {
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(VERTICES),
+            contents: bytemuck::cast_slice(VERTICES().as_slice()),
             usage: wgpu::BufferUsages::VERTEX,
         });
 
