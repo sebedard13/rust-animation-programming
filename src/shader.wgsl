@@ -40,10 +40,16 @@ fn vs_main(
         model_mat.model_matrix_3,
     );
 
+    let normal_matrix = mat3x3<f32>(
+        model_mat.model_matrix_0.xyz,
+        model_mat.model_matrix_1.xyz,
+        model_mat.model_matrix_2.xyz,
+    );
+
     let world_position: vec4<f32> = model_matrix * vec4<f32>(model.position, 1.0);
     out.clip_position = camera.view_proj * world_position;
     out.tex_coords = model.tex_coords;
-    out.world_normal = model.normal;
+    out.world_normal = normalize(normal_matrix * model.normal);
     out.world_position = world_position.xyz;
     return out;
 }
