@@ -69,7 +69,7 @@ var<uniform> light: LightUniform;
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let lightDir = normalize(light.pos - in.world_position);
     let lightDirectionalStrength: f32 = max(dot(in.world_normal, lightDir), 0.0);
-    let lightStrength = ( 0.3 + 7 * lightDirectionalStrength);
+    let lightStrength = ( 0.1 + 0.9 * lightDirectionalStrength);
 
     return textureSample(t_diffuse, s_diffuse, in.tex_coords) * vec4<f32>(lightStrength * light.color, 1.0);
 }
