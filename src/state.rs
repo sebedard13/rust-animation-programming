@@ -1,21 +1,20 @@
+use crate::basic_object::renderer::BasicObjectRenderer;
 use crate::camera::{Camera, CameraMatBuffer};
+use crate::color::color_from_rgba_hex;
 use crate::data::UserDomain;
-use crate::{gui, texture};
 use crate::gui::EguiRenderer;
+use crate::light::LightBuffer;
 use crate::model::{Vertex, INDICES, VERTICES};
 use crate::texture::Texture;
+use crate::{gui, texture};
 use egui_wgpu::wgpu::util::DeviceExt;
 use egui_wgpu::wgpu::Adapter;
 use egui_wgpu::{wgpu, ScreenDescriptor};
 use egui_winit::winit::dpi::PhysicalSize;
-use egui_winit::winit::event::{
-    DeviceEvent, ElementState, KeyEvent, MouseButton, WindowEvent,
-};
+use egui_winit::winit::event::{DeviceEvent, ElementState, KeyEvent, MouseButton, WindowEvent};
 use egui_winit::winit::keyboard::{KeyCode, PhysicalKey};
 use egui_winit::winit::window::Window;
-use glam::Mat4;
-use crate::basic_object::renderer::BasicObjectRenderer;
-use crate::color::color_from_rgba_hex;
+use glam::{vec3, Mat4};
 
 pub struct State<'a> {
     surface: wgpu::Surface<'a>,
@@ -29,7 +28,7 @@ pub struct State<'a> {
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
-    
+
     depth_texture: Texture,
 
     egui_renderer: EguiRenderer,
@@ -41,9 +40,11 @@ pub struct State<'a> {
     pub camera_mat_buffer: CameraMatBuffer,
     pub camera_buffer: wgpu::Buffer,
     pub camera_bind_group: wgpu::BindGroup,
-    
+
     pub basic_object_renderer: BasicObjectRenderer,
     pub model_mat_buffer: wgpu::Buffer,
+    light_buffer: wgpu::Buffer,
+    light_bind_group: wgpu::BindGroup,
 }
 
 impl<'a> State<'a> {
@@ -132,13 +133,66 @@ impl<'a> State<'a> {
 
         let depth_texture = texture::create_depth_texture(&device, &config);
 
-
         let camera_mat_buffer = CameraMatBuffer::new();
 
         let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Camera Buffer"),
             contents: bytemuck::cast_slice(&[camera_mat_buffer]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let camera_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+                label: Some("camera_bind_group_layout"),
+            });
+
+        let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &camera_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: camera_buffer.as_entire_binding(),
+            }],
+            label: Some("camera_bind_group"),
+        });
+
+        let l = LightBuffer::new(&vec3(0.0, 1.0, 2.0), &vec3(1.0, 1.0, 1.0));
+        let light_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Light Buffer"),
+            contents: bytemuck::cast_slice(&[l]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let light_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+            label: Some("light_bind_group_layout"),
+        });
+
+        let light_bind_group =  device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &light_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: light_buffer.as_entire_binding(),
+            }],
+            label: Some("light_bind_group"),
         });
 
         let identity = Mat4::IDENTITY.to_cols_array_2d();
@@ -172,40 +226,15 @@ impl<'a> State<'a> {
                     shader_location: 8,
                     format: wgpu::VertexFormat::Float32x4,
                 },
-
             ],
         };
-
-        let camera_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-                label: Some("camera_bind_group_layout"),
-            });
-
-        let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &camera_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: camera_buffer.as_entire_binding(),
-            }],
-            label: Some("camera_bind_group"),
-        });
 
         let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_group_layout],
+                bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_group_layout, &light_bind_group_layout],
                 push_constant_ranges: &[],
             });
 
@@ -243,7 +272,7 @@ impl<'a> State<'a> {
             depth_stencil: Some(wgpu::DepthStencilState {
                 format: wgpu::TextureFormat::Depth32Float,
                 depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Less, 
+                depth_compare: wgpu::CompareFunction::Less,
                 stencil: wgpu::StencilState::default(),
                 bias: wgpu::DepthBiasState::default(),
             }),
@@ -273,8 +302,9 @@ impl<'a> State<'a> {
         let mut data = UserDomain::new();
         data.camera.aspect = (size.width as f32) / (size.height as f32);
         data.camera.update_vectors();
-        
-        let arrow_renderer = BasicObjectRenderer::new(&device, &camera_bind_group_layout, &config, &mut data);
+
+        let basic_object_renderer =
+            BasicObjectRenderer::new(&device, &camera_bind_group_layout, &config, &mut data);
         Self {
             window,
             surface,
@@ -292,8 +322,10 @@ impl<'a> State<'a> {
             camera_mat_buffer,
             camera_buffer,
             camera_bind_group,
+            light_buffer,
+            light_bind_group,
             model_mat_buffer,
-            basic_object_renderer: arrow_renderer
+            basic_object_renderer,
         }
     }
 
@@ -308,7 +340,7 @@ impl<'a> State<'a> {
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
             self.depth_texture = texture::create_depth_texture(&self.device, &self.config);
-            self.data.camera.aspect = (new_size.width as f32)/ (new_size.height as f32);
+            self.data.camera.aspect = (new_size.width as f32) / (new_size.height as f32);
         }
     }
 
@@ -333,7 +365,7 @@ impl<'a> State<'a> {
                 true
             }
             WindowEvent::MouseInput { button, .. } if *button == MouseButton::Left => true,
-            WindowEvent::MouseInput { button,  .. } if *button == MouseButton::Right => {
+            WindowEvent::MouseInput { button, .. } if *button == MouseButton::Right => {
                 self.data.mouse_locked = !self.data.mouse_locked;
                 true
             }
@@ -359,15 +391,27 @@ impl<'a> State<'a> {
     pub(crate) fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         self.data.camera.move_update();
         self.camera_mat_buffer.update(&self.data.camera);
-       
+
         self.queue.write_buffer(
             &self.camera_buffer,
             0,
             bytemuck::cast_slice(&[self.camera_mat_buffer]),
         );
         self.window.set_cursor_visible(!self.data.mouse_locked);
-        
-        self.queue.write_buffer(&self.model_mat_buffer, 0,  bytemuck::cast_slice(&self.data.calculate_model_matrix().to_cols_array_2d()));
+
+        self.queue.write_buffer(
+            &self.model_mat_buffer,
+            0,
+            bytemuck::cast_slice(&self.data.calculate_model_matrix().to_cols_array_2d()),
+        );
+        self.queue.write_buffer(
+            &self.light_buffer,
+            0,
+            bytemuck::cast_slice(&[LightBuffer::new(
+                &self.data.light_pos,
+                &self.data.light_color,
+            )]),
+        );
 
         let output = self.surface.get_current_texture()?;
         let view = output
@@ -405,12 +449,18 @@ impl<'a> State<'a> {
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, self.crate_tex.get_bind_group(), &[]);
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+            render_pass.set_bind_group(2, &self.light_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_vertex_buffer(1, self.model_mat_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
             render_pass.draw_indexed(0..INDICES.len() as u32, 0, 0..1);
-        
-            self.basic_object_renderer.render(&mut render_pass, &self.camera_bind_group, &mut self.data, &self.device);
+
+            self.basic_object_renderer.render(
+                &mut render_pass,
+                &self.camera_bind_group,
+                &mut self.data,
+                &self.device,
+            );
         }
 
         let screen_descriptor = ScreenDescriptor {

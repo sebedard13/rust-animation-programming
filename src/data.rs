@@ -27,6 +27,9 @@ pub struct UserDomain {
     pub start_tangent: Vec3,
     pub end_pos: Vec3,
     pub end_tangent: Vec3,
+
+    pub light_pos: Vec3,
+    pub light_color: Vec3,
 }
 
 impl UserDomain {
@@ -52,6 +55,9 @@ impl UserDomain {
             start_tangent: Vec3::new(-10.0, -8.0, 8.0),
             end_pos: Vec3::new(4.0, 2.0, -2.0),
             end_tangent: Vec3::new(-6.0, 5.0, -6.0),
+
+            light_pos: Vec3::new(4.0, 5.0, -3.0),
+            light_color: Vec3::new(0.5, 0.5, 0.5),
         }
     }
 

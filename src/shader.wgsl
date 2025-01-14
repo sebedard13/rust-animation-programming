@@ -61,15 +61,23 @@ var t_diffuse: texture_2d<f32>;
 @group(0) @binding(1)
 var s_diffuse: sampler;
 
+struct LightUniform {
+    pos: vec3<f32>,
+    _padding: f32,
+    color: vec3<f32>,
+    _padding2: f32,
+};
+
+@group(2) @binding(0)
+var<uniform> light: LightUniform;
+
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let lightPos = vec3<f32>(4.0, 5.0, -3.0);
-    let lightColor = vec3<f32>(0.5, 0.5, 0.5);
-    let lightDir = normalize(lightPos - in.world_position);
+    let lightDir = normalize(light.pos - in.world_position);
     let lightDirectionalStrength: f32 = max(dot(in.world_normal, lightDir), 0.0);
-    let lightStrength = ( 0.3 + 7 * lightDirectionalStrength);
+    let lightStrength = ( 0.1 + 0.9 * lightDirectionalStrength);
 
-    return textureSample(t_diffuse, s_diffuse, in.tex_coords) * vec4<f32>(lightStrength *lightColor, 1.0);
+    return textureSample(t_diffuse, s_diffuse, in.tex_coords) * vec4<f32>(lightStrength * light.color, 1.0);
 }
 
 

@@ -36,7 +36,7 @@ pub fn gui(user_domain: &mut UserDomain, ui: &Context) {
             });
 
             ui.separator();
-            ui.collapsing("Elements", |ui| {
+            ui.collapsing("Crates", |ui| {
                 ui.add(
                     Slider::new(&mut user_domain.interpolation, 0.0..=1.0).text("Interpolation"),
                 );
@@ -94,6 +94,21 @@ pub fn gui(user_domain: &mut UserDomain, ui: &Context) {
                     ui.add(Slider::new(&mut user_domain.end_tangent.x, -10.0..=10.0));
                     ui.add(Slider::new(&mut user_domain.end_tangent.y, -10.0..=10.0));
                     ui.add(Slider::new(&mut user_domain.end_tangent.z, -10.0..=10.0));
+                });
+            });
+
+            ui.collapsing("Light", |ui| {
+                ui.label("Position");
+                ui.horizontal(|ui| {
+                    ui.add(Slider::new(&mut user_domain.light_pos.x, -10.0..=10.0));
+                    ui.add(Slider::new(&mut user_domain.light_pos.y, -10.0..=10.0));
+                    ui.add(Slider::new(&mut user_domain.light_pos.z, -10.0..=10.0));
+                });
+                ui.label("Color");
+                ui.horizontal(|ui| {
+                    ui.add(Slider::new(&mut user_domain.light_color.x, 0.0..=1.0));
+                    ui.add(Slider::new(&mut user_domain.light_color.y, 0.0..=1.0));
+                    ui.add(Slider::new(&mut user_domain.light_color.z, 0.0..=1.0));
                 });
             });
         });

@@ -7,6 +7,7 @@ mod model;
 mod hermite_spline;
 mod color;
 mod basic_object;
+mod light;
 
 use crate::state::State;
 use anyhow::Context;
