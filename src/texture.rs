@@ -1,3 +1,6 @@
+use std::fs;
+use std::path::Path;
+use anyhow::Context;
 use egui_wgpu::wgpu::{BindGroupLayout, Device, Queue, Sampler, TextureView};
 
 use egui_wgpu::wgpu as wgpu;
@@ -67,6 +70,11 @@ impl Texture {
             sampler,
             texture_group: None,
         }
+    }
+
+    pub fn from_path(device: &Device, queue: &Queue, path: &Path) -> Self{
+        let data  = fs::read(path).context("Should have valid path").unwrap();
+        Self::from_file(device, queue, &data)
     }
 
     pub fn create_texture_group(&mut self, device: &Device, bind_group_layout: &BindGroupLayout) {
