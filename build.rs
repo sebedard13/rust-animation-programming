@@ -31,7 +31,6 @@ fn main() {
     if rsc.exists() {
         let mut files = Vec::new();
         get_all_files_recursive(&rsc, &mut files);
-        let file_len = files.len();
         for file in files {
             let dest = Path::join(Path::new(&target_dir.join("rsc")), file.strip_prefix(&rsc).expect("Should be able to strip prefix of rsc folder of file in rsc folder"));
             if let Some(parent) = dest.parent() {

@@ -5,7 +5,7 @@ use crate::color::color_from_rgba_hex;
 use crate::data::UserDomain;
 use crate::gui::EguiRenderer;
 use crate::light::LightBuffer;
-use crate::model::{load_model_woman, Vertex, INDICES, VERTICES};
+use crate::model::{Vertex, Model};
 use crate::texture::Texture;
 use crate::{gui, texture};
 use egui_wgpu::wgpu::util::DeviceExt;
@@ -27,16 +27,16 @@ pub struct State<'a> {
     window: &'a Window,
 
     render_pipeline: wgpu::RenderPipeline,
-    vertex_buffer: wgpu::Buffer,
-    index_buffer: wgpu::Buffer,
-
+    
+    woman_model: Model,
+    
     depth_texture: Texture,
 
     egui_renderer: EguiRenderer,
 
     //Data
     pub data: UserDomain,
-    crate_tex: Texture,
+ 
 
     pub camera_mat_buffer: CameraMatBuffer,
     pub camera_buffer: wgpu::Buffer,
@@ -46,7 +46,7 @@ pub struct State<'a> {
     pub model_mat_buffer: wgpu::Buffer,
     light_buffer: wgpu::Buffer,
     light_bind_group: wgpu::BindGroup,
-    pub indice_len: usize,
+    
 }
 
 impl<'a> State<'a> {
@@ -129,9 +129,6 @@ impl<'a> State<'a> {
                 ],
                 label: Some("texture_bind_group_layout"),
             });
-
-        let mut crate_tex = Texture::from_path(&device, &queue, &*Path::new("rsc").join("Woman.png"));
-        crate_tex.create_texture_group(&device, &texture_bind_group_layout);
 
         let depth_texture = texture::create_depth_texture(&device, &config);
 
@@ -287,20 +284,7 @@ impl<'a> State<'a> {
             cache: None,
         });
         
-        let (vertex, indices) = load_model_woman().unwrap();
-
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(vertex.as_slice()),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-
-        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(indices.as_slice()),
-            usage: wgpu::BufferUsages::INDEX,
-        });
-        let indice_len = indices.len(); 
+        let woman_model = Model::new(&device, &queue, &*Path::new("rsc").join("Woman.gltf"), &*Path::new("rsc").join("Woman.png"), &texture_bind_group_layout).unwrap();
 
         let egui_renderer = EguiRenderer::new(&device, config.format, None, 1, &window);
 
@@ -319,10 +303,7 @@ impl<'a> State<'a> {
             size,
             data,
             render_pipeline,
-            vertex_buffer,
-            index_buffer,
-            indice_len,
-            crate_tex,
+            woman_model,
             depth_texture,
             egui_renderer,
             camera_mat_buffer,
@@ -453,13 +434,11 @@ impl<'a> State<'a> {
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(0, self.crate_tex.get_bind_group(), &[]);
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
             render_pass.set_bind_group(2, &self.light_bind_group, &[]);
-            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_vertex_buffer(1, self.model_mat_buffer.slice(..));
-            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-            render_pass.draw_indexed(0..self.indice_len as u32, 0, 0..1);
+            self.woman_model.draw(&mut render_pass);
+         
 
             self.basic_object_renderer.render(
                 &mut render_pass,

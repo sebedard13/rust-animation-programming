@@ -1,12 +1,11 @@
+use crate::texture::Texture;
 use anyhow::Context;
 use anyhow::Result;
 use egui_wgpu::wgpu;
-use glam::vec3;
-use gltf::accessor::Item;
-use gltf::json::accessor::ComponentType;
 use gltf::mesh::util::{ReadIndices, ReadTexCoords};
-use gltf::{Gltf, Semantic};
-use std::primitive;
+use std::path::Path;
+use wgpu::BindGroupLayout;
+use wgpu::util::DeviceExt;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -42,10 +41,53 @@ impl Vertex {
     }
 }
 
-pub fn load_model_woman() -> Result<(Vec<Vertex>, Vec<u16>)> {
-    let (gltf, buffers, _) =
-        gltf::import("rsc/Woman.gltf").context("File should be in rsc folder")?;
+pub struct Model {
+    vertex_buffer: wgpu::Buffer,
+    index_buffer: wgpu::Buffer,
+    indice_len: usize,
+    texture: Texture,
+}
+
+impl Model {
+    pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, model_path: &Path, texture_path: &Path, texture_bind_group_layout: &BindGroupLayout) -> Result<Self> {
+        let (vertices, indices) = load_model(model_path)?;
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Vertex Buffer"),
+            contents: bytemuck::cast_slice(&vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Index Buffer"),
+            contents: bytemuck::cast_slice(indices.as_slice()),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+        let indice_len = indices.len();
+
+
+        let mut texture = Texture::from_path(&device, &queue, texture_path);
+        texture.create_texture_group(&device, texture_bind_group_layout);
+        
+        Ok(Self {
+            vertex_buffer,
+            index_buffer,
+            indice_len,
+            texture,
+        })
+    }
     
+    pub fn draw(&self, render_pass: &mut wgpu::RenderPass) {
+        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        render_pass.set_bind_group(0, self.texture.get_bind_group(), &[]);
+        render_pass.draw_indexed(0..self.indice_len as u32, 0, 0..1);
+    }
+}
+
+fn load_model(model_path: &Path) -> Result<(Vec<Vertex>, Vec<u16>)> {
+    let (gltf, buffers, _) =
+        gltf::import(model_path).context("File should be in rsc folder")?;
+
     let primitive = gltf
         .meshes()
         .nth(0)
@@ -84,74 +126,8 @@ pub fn load_model_woman() -> Result<(Vec<Vertex>, Vec<u16>)> {
     let indices: Vec<u16> = match reader.read_indices().context("Should have indices")? {
         ReadIndices::U8(iter) => iter.map(|i| i as u16).collect(),
         ReadIndices::U16(iter) => iter.collect(),
-        ReadIndices::U32(iter) => return Err(anyhow::anyhow!("U32 indices not supported")),
+        ReadIndices::U32(_) => return Err(anyhow::anyhow!("U32 indices not supported")),
     };
 
     Ok((vertex, indices))
-}
-
-pub fn VERTICES() -> Vec<Vertex> {
-    vec![
-        // front
-        Vertex {
-            position: [-0.5, -0.5, 0.5],
-            normal: vec3(-1.0, -1.0, 1.0).normalize().to_array(),
-            uv: [0.0, 1.0],
-        },
-        Vertex {
-            position: [0.5, -0.5, 0.5],
-            normal: vec3(1.0, -1.0, 1.0).normalize().to_array(),
-            uv: [1.0, 1.0],
-        },
-        Vertex {
-            position: [-0.5, 0.5, 0.5],
-            normal: vec3(-1.0, 1.0, 1.0).normalize().to_array(),
-            uv: [0.0, 0.0],
-        },
-        Vertex {
-            position: [0.5, 0.5, 0.5],
-            normal: vec3(1.0, 1.0, 1.0).normalize().to_array(),
-            uv: [1.0, 0.0],
-        },
-        // back
-        Vertex {
-            position: [0.5, -0.5, -0.5],
-            normal: vec3(1.0, -1.0, -1.0).normalize().to_array(),
-            uv: [0.0, 1.0],
-        },
-        Vertex {
-            position: [-0.5, -0.5, -0.5],
-            normal: vec3(-1.0, -1.0, -1.0).normalize().to_array(),
-            uv: [1.0, 1.0],
-        },
-        Vertex {
-            position: [0.5, 0.5, -0.5],
-            normal: vec3(1.0, 1.0, -1.0).normalize().to_array(),
-            uv: [0.0, 0.0],
-        },
-        Vertex {
-            position: [-0.5, 0.5, -0.5],
-            normal: vec3(-1.0, 1.0, -1.0).normalize().to_array(),
-            uv: [1.0, 0.0],
-        },
-    ]
-}
-pub const INDICES: &[u16] = &[
-    0, 1, 2, 2, 1, 3, //front
-    4, 5, 6, 6, 5, 7, //back
-    2, 3, 6, 6, 7, 2, //top
-    0, 4, 1, 4, 0, 5, //bottom
-    3, 1, 4, 4, 6, 3, //right
-    0, 2, 5, 5, 2, 7, //left
-];
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_load_model() {
-        let (vertices, indices) = load_model_woman().unwrap();
-        assert_eq!(vertices.len(), 100);
-    }
 }
