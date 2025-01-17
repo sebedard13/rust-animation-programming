@@ -203,7 +203,7 @@ impl<'a> State<'a> {
         });
 
         let mat4_buffer_layout = wgpu::VertexBufferLayout {
-            array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
+            array_stride: (size_of::<f32>()*4*4) as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Instance,
             attributes: &[
                 wgpu::VertexAttribute {
