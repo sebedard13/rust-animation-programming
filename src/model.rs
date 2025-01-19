@@ -130,36 +130,34 @@ fn load_model(model_path: &Path) -> Result<(Vec<Vertex>, Vec<u16>, (Vec<u8>, u32
         ReadIndices::U32(_) => return Err(anyhow::anyhow!("U32 indices not supported")),
     };
     
-    if (images.len() != 1) {
-        Ok((vertex, indices, (Vec::new(), 0, 0)))
+    if images.len() == 0 {
+        return Ok((vertex, indices, (Vec::new(), 0, 0)));
     }
-    else{
-        let image_rgb = images[0].pixels.clone();
-        
-        match images[0].format{
-          
-            Format::R8G8B8 => {
-                let image_rgba = image_rgb.chunks_exact(3).map(|chunk| {
-                    let mut chunk = chunk.to_vec();
-                    chunk.push(255);
-                    chunk
-                }).flatten().collect();
-                Ok((vertex, indices, (image_rgba, images[0].width, images[0].height)))
-            }
-            Format::R8G8B8A8 => {   
-                Ok((vertex, indices, (image_rgb, images[0].width, images[0].height)))
-            }
-            Format::R16 => unimplemented!(),
-            Format::R16G16 => unimplemented!(),
-            Format::R16G16B16 => unimplemented!(),
-            Format::R16G16B16A16 => unimplemented!(),
-            Format::R32G32B32FLOAT => unimplemented!(),
-            Format::R32G32B32A32FLOAT => unimplemented!(),
-            Format::R8 => unimplemented!(),
-            Format::R8G8 => unimplemented!(),
+    
+    let index_image_color = gltf.materials().nth(0).context("Should have materials")?.pbr_metallic_roughness().base_color_texture().unwrap().texture().index();
+    let image_rgb = images[index_image_color].pixels.clone();
+
+    match images[index_image_color].format{
+
+        Format::R8G8B8 => {
+            let image_rgba = image_rgb.chunks_exact(3).map(|chunk| {
+                let mut chunk = chunk.to_vec();
+                chunk.push(255);
+                chunk
+            }).flatten().collect();
+            return  Ok((vertex, indices, (image_rgba, images[0].width, images[0].height)));
         }
-        
-        
+        Format::R8G8B8A8 => {
+            return  Ok((vertex, indices, (image_rgb, images[0].width, images[0].height)));
+        }
+        Format::R16 => unimplemented!(),
+        Format::R16G16 => unimplemented!(),
+        Format::R16G16B16 => unimplemented!(),
+        Format::R16G16B16A16 => unimplemented!(),
+        Format::R32G32B32FLOAT => unimplemented!(),
+        Format::R32G32B32A32FLOAT => unimplemented!(),
+        Format::R8 => unimplemented!(),
+        Format::R8G8 => unimplemented!(),
     }
 }
 #[cfg(test)]

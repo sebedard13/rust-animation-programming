@@ -13214,7 +13214,11 @@
         {
             "doubleSided" : true,
             "name" : "Texture",
-            "pbrMetallicRoughness" : {}
+            "pbrMetallicRoughness" : {
+                "baseColorTexture": {
+                    "index": 0
+                }
+            }
         }
     ],
     "textures": [

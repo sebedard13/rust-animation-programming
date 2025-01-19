@@ -284,8 +284,9 @@ impl<'a> State<'a> {
             cache: None,
         });
         
-        let woman_model = Model::from_gltf(&device, &queue, &*Path::new("rsc").join("Woman.gltf"), &texture_bind_group_layout).unwrap();
+        //let woman_model = Model::from_gltf(&device, &queue, &*Path::new("rsc").join("Woman.gltf"), &texture_bind_group_layout).unwrap();
         //let woman_model = Model::from_gltf(&device, &queue, &*PathBuf::from("rsc").join("duck").join("glTF").join("Duck.gltf"), &texture_bind_group_layout).unwrap();
+        let woman_model = Model::from_gltf(&device, &queue, &*PathBuf::from("rsc").join("lantern").join("Lantern.gltf"), &texture_bind_group_layout).unwrap();
 
         let egui_renderer = EguiRenderer::new(&device, config.format, None, 1, &window);
 
