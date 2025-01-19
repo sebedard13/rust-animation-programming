@@ -3,7 +3,8 @@ use anyhow::Context;
 use anyhow::Result;
 use egui_wgpu::wgpu;
 use gltf::mesh::util::{ReadIndices, ReadTexCoords};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use gltf::image::Format;
 use wgpu::BindGroupLayout;
 use wgpu::util::DeviceExt;
 
@@ -43,20 +44,20 @@ impl Vertex {
 
 pub struct Model {
     vertex_buffer: wgpu::Buffer,
-    index_buffer: wgpu::Buffer,
-    indice_len: usize,
+    indices_buffer: wgpu::Buffer,
+    indices_len: usize,
     texture: Texture,
 }
 
 impl Model {
-    pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, model_path: &Path, texture_path: &Path, texture_bind_group_layout: &BindGroupLayout) -> Result<Self> {
-        let (vertices, indices) = load_model(model_path)?;
+    pub fn from_gltf(device: &wgpu::Device, queue: &wgpu::Queue, model_path: &Path, texture_bind_group_layout: &BindGroupLayout) -> Result<Self> {
+        let (vertices, indices, image) = load_model(model_path)?;
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: bytemuck::cast_slice(&vertices),
             usage: wgpu::BufferUsages::VERTEX,
         });
-        
+
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Index Buffer"),
             contents: bytemuck::cast_slice(indices.as_slice()),
@@ -65,27 +66,27 @@ impl Model {
         let indice_len = indices.len();
 
 
-        let mut texture = Texture::from_path(&device, &queue, texture_path);
+        let mut texture = Texture::from_bytes(&device, &queue, image.0.as_slice(),  image.1,  image.2);
         texture.create_texture_group(&device, texture_bind_group_layout);
-        
+
         Ok(Self {
             vertex_buffer,
-            index_buffer,
-            indice_len,
+            indices_buffer: index_buffer,
+            indices_len: indice_len,
             texture,
         })
     }
     
     pub fn draw(&self, render_pass: &mut wgpu::RenderPass) {
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        render_pass.set_index_buffer(self.indices_buffer.slice(..), wgpu::IndexFormat::Uint16);
         render_pass.set_bind_group(0, self.texture.get_bind_group(), &[]);
-        render_pass.draw_indexed(0..self.indice_len as u32, 0, 0..1);
+        render_pass.draw_indexed(0..self.indices_len as u32, 0, 0..1);
     }
 }
 
-fn load_model(model_path: &Path) -> Result<(Vec<Vertex>, Vec<u16>)> {
-    let (gltf, buffers, _) =
+fn load_model(model_path: &Path) -> Result<(Vec<Vertex>, Vec<u16>, (Vec<u8>, u32, u32))> {
+    let (gltf, buffers, images) =
         gltf::import(model_path).context("File should be in rsc folder")?;
 
     let primitive = gltf
@@ -128,6 +129,48 @@ fn load_model(model_path: &Path) -> Result<(Vec<Vertex>, Vec<u16>)> {
         ReadIndices::U16(iter) => iter.collect(),
         ReadIndices::U32(_) => return Err(anyhow::anyhow!("U32 indices not supported")),
     };
+    
+    if (images.len() != 1) {
+        Ok((vertex, indices, (Vec::new(), 0, 0)))
+    }
+    else{
+        let image_rgb = images[0].pixels.clone();
+        
+        match images[0].format{
+          
+            Format::R8G8B8 => {
+                let image_rgba = image_rgb.chunks_exact(3).map(|chunk| {
+                    let mut chunk = chunk.to_vec();
+                    chunk.push(255);
+                    chunk
+                }).flatten().collect();
+                Ok((vertex, indices, (image_rgba, images[0].width, images[0].height)))
+            }
+            Format::R8G8B8A8 => {   
+                Ok((vertex, indices, (image_rgb, images[0].width, images[0].height)))
+            }
+            Format::R16 => unimplemented!(),
+            Format::R16G16 => unimplemented!(),
+            Format::R16G16B16 => unimplemented!(),
+            Format::R16G16B16A16 => unimplemented!(),
+            Format::R32G32B32FLOAT => unimplemented!(),
+            Format::R32G32B32A32FLOAT => unimplemented!(),
+            Format::R8 => unimplemented!(),
+            Format::R8G8 => unimplemented!(),
+        }
+        
+        
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
 
-    Ok((vertex, indices))
+    #[test]
+    fn test_load_model() {
+        let mut path = PathBuf::from("rsc").join("duck").join("glTF").join("Duck.gltf");
+        let (vertices, indices,_) = load_model(&path).unwrap();
+    
+    }
 }

@@ -1,10 +1,11 @@
-use std::fs;
-use std::path::Path;
 use anyhow::Context;
 use egui_wgpu::wgpu::{BindGroupLayout, Device, Queue, Sampler, TextureView};
+use std::fs;
+use std::path::Path;
 
-use egui_wgpu::wgpu as wgpu;
+use egui_wgpu::wgpu;
 use wgpu::Label;
+use image::GenericImageView;
 
 pub struct Texture {
     pub texture: TextureView,
@@ -13,15 +14,10 @@ pub struct Texture {
 }
 
 impl Texture {
-    pub fn from_file(device: &Device, queue: &Queue, diffuse_bytes: &[u8]) -> Self {
-        let diffuse_image = image::load_from_memory(diffuse_bytes).unwrap();
-        let diffuse_rgba = diffuse_image.to_rgba8();
-
-        use image::GenericImageView;
-        let dimensions = diffuse_image.dimensions();
+    pub fn from_bytes(device: &Device, queue: &Queue, data: &[u8], w: u32, h: u32)-> Self {
         let texture_size = wgpu::Extent3d {
-            width: dimensions.0,
-            height: dimensions.1,
+            width: w,
+            height: h,
             depth_or_array_layers: 1,
         };
         let diffuse_texture = device.create_texture(&wgpu::TextureDescriptor {
@@ -36,20 +32,17 @@ impl Texture {
         });
 
         queue.write_texture(
-            // Tells wgpu where to copy the pixel data
             wgpu::ImageCopyTexture {
                 texture: &diffuse_texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            // The actual pixel data
-            &diffuse_rgba,
-            // The layout of the texture
+            data,
             wgpu::ImageDataLayout {
                 offset: 0,
-                bytes_per_row: Some(4 * dimensions.0),
-                rows_per_image: Some(dimensions.1),
+                bytes_per_row: Some(4 * w),
+                rows_per_image: Some(h),
             },
             texture_size,
         );
@@ -70,11 +63,6 @@ impl Texture {
             sampler,
             texture_group: None,
         }
-    }
-
-    pub fn from_path(device: &Device, queue: &Queue, path: &Path) -> Self{
-        let data  = fs::read(path).context("Should have valid path").unwrap();
-        Self::from_file(device, queue, &data)
     }
 
     pub fn create_texture_group(&mut self, device: &Device, bind_group_layout: &BindGroupLayout) {
@@ -100,7 +88,7 @@ impl Texture {
     }
 }
 
-pub fn create_depth_texture(device: &Device, config: &wgpu::SurfaceConfiguration) -> Texture{
+pub fn create_depth_texture(device: &Device, config: &wgpu::SurfaceConfiguration) -> Texture {
     let size = wgpu::Extent3d {
         width: config.width.max(1),
         height: config.height.max(1),
@@ -113,31 +101,28 @@ pub fn create_depth_texture(device: &Device, config: &wgpu::SurfaceConfiguration
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Depth32Float,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-            | wgpu::TextureUsages::TEXTURE_BINDING,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
         view_formats: &[],
     };
     let texture = device.create_texture(&desc);
 
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let sampler = device.create_sampler(
-        &wgpu::SamplerDescriptor { 
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            compare: Some(wgpu::CompareFunction::LessEqual),
-            lod_min_clamp: 0.0,
-            lod_max_clamp: 100.0,
-            ..Default::default()
-        }
-    );
-    
+    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        address_mode_u: wgpu::AddressMode::ClampToEdge,
+        address_mode_v: wgpu::AddressMode::ClampToEdge,
+        address_mode_w: wgpu::AddressMode::ClampToEdge,
+        mag_filter: wgpu::FilterMode::Linear,
+        min_filter: wgpu::FilterMode::Linear,
+        mipmap_filter: wgpu::FilterMode::Nearest,
+        compare: Some(wgpu::CompareFunction::LessEqual),
+        lod_min_clamp: 0.0,
+        lod_max_clamp: 100.0,
+        ..Default::default()
+    });
+
     Texture {
         texture: view,
         sampler,
-        texture_group : None
+        texture_group: None,
     }
 }

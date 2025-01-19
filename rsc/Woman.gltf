@@ -13217,6 +13217,25 @@
             "pbrMetallicRoughness" : {}
         }
     ],
+    "textures": [
+        {
+            "sampler": 0,
+            "source": 0
+        }
+    ],
+    "images": [
+        {
+            "uri": "Woman.png"
+        }
+    ],
+    "samplers": [
+        {
+            "magFilter": 9729,
+            "minFilter": 9986,
+            "wrapS": 10497,
+            "wrapT": 10497
+        }
+    ],
     "meshes" : [
         {
             "name" : "WomanMesh",

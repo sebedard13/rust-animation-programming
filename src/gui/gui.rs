@@ -36,7 +36,7 @@ pub fn gui(user_domain: &mut UserDomain, ui: &Context) {
             });
 
             ui.separator();
-            ui.collapsing("Crates", |ui| {
+            ui.collapsing("Model", |ui| {
                 ui.add(
                     Slider::new(&mut user_domain.interpolation, 0.0..=1.0).text("Interpolation"),
                 );
@@ -48,6 +48,10 @@ pub fn gui(user_domain: &mut UserDomain, ui: &Context) {
                     &mut user_domain.draw_model_coordinates,
                     "Draw Model Coordinates",
                 );
+                ui.add(Slider::new(&mut user_domain.scale, 0.001..=100.0).text("Scale").step_by(0.01));
+                if ui.button("Reset Animation").clicked(){ 
+                    user_domain.reset_animation();
+                }
                 ui.label("Start rotation");
                 ui.horizontal(|ui| {
                     ui.add(Slider::new(
