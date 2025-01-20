@@ -3,7 +3,7 @@ use anyhow::Context;
 use anyhow::Result;
 use egui_wgpu::wgpu;
 use gltf::mesh::util::{ReadIndices, ReadTexCoords};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use gltf::image::Format;
 use wgpu::BindGroupLayout;
 use wgpu::util::DeviceExt;
@@ -167,8 +167,8 @@ mod tests {
 
     #[test]
     fn test_load_model() {
-        let mut path = PathBuf::from("rsc").join("duck").join("glTF").join("Duck.gltf");
-        let (vertices, indices,_) = load_model(&path).unwrap();
+        let path = PathBuf::from("rsc").join("duck").join("glTF").join("Duck.gltf");
+        let (_, _, _) = load_model(&path).unwrap();
     
     }
 }

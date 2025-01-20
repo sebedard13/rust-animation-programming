@@ -1,11 +1,6 @@
-use anyhow::Context;
-use egui_wgpu::wgpu::{BindGroupLayout, Device, Queue, Sampler, TextureView};
-use std::fs;
-use std::path::Path;
-
-use egui_wgpu::wgpu;
+use wgpu::{BindGroupLayout, Device, Queue, Sampler, TextureView};
+use wgpu;
 use wgpu::Label;
-use image::GenericImageView;
 
 pub struct Texture {
     pub texture: TextureView,
