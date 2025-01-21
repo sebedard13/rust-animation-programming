@@ -4,6 +4,7 @@ mod gui;
 mod state;
 mod texture;
 mod model;
+mod modelv2;
 mod hermite_spline;
 mod color;
 mod basic_object;
