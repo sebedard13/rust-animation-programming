@@ -24,6 +24,7 @@ use log::{error, warn};
 
 use egui_wgpu::wgpu;
 
+#[allow(deprecated)]
 pub async fn run() -> Result<()> {
     env_logger::builder()
         .filter_level(log::LevelFilter::Info)
@@ -39,6 +40,7 @@ pub async fn run() -> Result<()> {
 
     let mut time_prev = std::time::Instant::now();
 
+   
     event_loop
         .run(|event, control_flow| match event {
             Event::WindowEvent {
