@@ -1,3 +1,4 @@
+use std::num::NonZeroU32;
 use std::path::PathBuf;
 use crate::basic_object::renderer::BasicObjectRenderer;
 use crate::camera::{Camera, CameraMatBuffer};
@@ -16,6 +17,8 @@ use egui_winit::winit::event::{DeviceEvent, ElementState, KeyEvent, MouseButton,
 use egui_winit::winit::keyboard::{KeyCode, PhysicalKey};
 use egui_winit::winit::window::Window;
 use glam::{vec3, Mat4};
+use log::info;
+use crate::modelv2::Modelv2;
 
 pub struct State<'a> {
     surface: wgpu::Surface<'a>,
@@ -28,7 +31,7 @@ pub struct State<'a> {
 
     render_pipeline: wgpu::RenderPipeline,
     
-    woman_model: Model,
+    woman_model: Modelv2,
     
     depth_texture: Texture,
 
@@ -46,7 +49,8 @@ pub struct State<'a> {
     pub model_mat_buffer: wgpu::Buffer,
     light_buffer: wgpu::Buffer,
     light_bind_group: wgpu::BindGroup,
-    
+
+    pub joints_bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl<'a> State<'a> {
@@ -194,6 +198,30 @@ impl<'a> State<'a> {
             label: Some("light_bind_group"),
         });
 
+        let joints_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor{
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+            label: Some("joints_bind_group_layout"),
+        });
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         let identity = Mat4::IDENTITY.to_cols_array_2d();
         let model_mat_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Model transform"),
@@ -233,7 +261,7 @@ impl<'a> State<'a> {
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_group_layout, &light_bind_group_layout],
+                bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_group_layout, &light_bind_group_layout, &joints_bind_group_layout],
                 push_constant_ranges: &[],
             });
 
@@ -284,7 +312,10 @@ impl<'a> State<'a> {
             cache: None,
         });
         
-        let woman_model = Model::from_gltf(&device, &queue, &*PathBuf::from("rsc").join("Woman.gltf"), &texture_bind_group_layout).unwrap();
+        info!("Before loading model");
+        
+        let mut woman_model = Modelv2::load_woman().unwrap();
+        woman_model.load_on_gpu(&device, &queue, &texture_bind_group_layout, &joints_bind_group_layout);
         //let woman_model = Model::from_gltf(&device, &queue, &*PathBuf::from("rsc").join("duck").join("glTF").join("Duck.gltf"), &texture_bind_group_layout).unwrap();
         //let woman_model = Model::from_gltf(&device, &queue, &*PathBuf::from("rsc").join("lantern").join("Lantern.gltf"), &texture_bind_group_layout).unwrap();
 
@@ -315,6 +346,8 @@ impl<'a> State<'a> {
             light_bind_group,
             model_mat_buffer,
             basic_object_renderer,
+
+            joints_bind_group_layout
         }
     }
 

@@ -11,6 +11,15 @@ pub struct NodeTree {
     nodes: Vec<Node>,
 }
 
+impl NodeTree {
+    pub(crate) fn get_joints(&self) -> Vec<[[f32;4];4]> {
+        let mut joints = Vec::with_capacity(self.nodes.len());
+        for i in 0..self.nodes.len() {
+            joints.push(self.get_global_transform(i).to_cols_array_2d());
+        }
+        joints
+    }
+}
 
 impl NodeTree {
     pub fn new() -> Self {
