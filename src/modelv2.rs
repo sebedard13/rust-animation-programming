@@ -51,7 +51,11 @@ impl Modelv2 {
         let skin = mesh_node.skin().context("Should have a skin")?;
         let joints: Vec<usize> = skin.joints().map(|joint| joint.index()).collect();
         let nodes = gltf.nodes().collect::<Vec<gltf::Node>>();
-        let nodes_tree = create_nodes_tree_from_joints(&joints, nodes);
+        let inverse_bind_matrices = skin.reader(|buffer| Some(&buffers[buffer.index()])).read_inverse_bind_matrices().context("Should have inverse bind matrices")?;
+        let inverse_bind_matrices: Vec<glam::Mat4> = inverse_bind_matrices.map(|m| {
+            glam::Mat4::from_cols_array_2d(&m)
+        }).collect();
+        let nodes_tree = create_nodes_tree_from_joints(joints, nodes, inverse_bind_matrices);
 
         let mesh = mesh_node.mesh().context("Should have a mesh")?;
         let primitive = mesh.primitives().nth(0).context("Should have a primitive")?;
@@ -67,12 +71,12 @@ impl Modelv2 {
             return Err(anyhow::anyhow!("Positions, normals and uvs should have the same length"));
         }
         
-        let affected_joints: Option<Vec<[u16; 4]>> = {
+        let affected_joints: Option<Vec<[u32; 4]>> = {
             let affected_joints = reader.read_joints(0);
             if let Some(affected_joints) = affected_joints {
                 match affected_joints{
-                    ReadJoints::U8(joints) => Some(joints.map(|j: [u8;4]| j.map(|i| i as u16)).collect()),
-                    ReadJoints::U16(joints) => Some(joints.collect()),
+                    ReadJoints::U8(joints) => Some(joints.map(|j: [u8;4]| j.map(|i| i as u32)).collect()),
+                    ReadJoints::U16(joints) => Some(joints.map(|j: [u16;4]| j.map(|i| i as u32)).collect()),
                 }
             } else {
                 None
@@ -148,6 +152,9 @@ impl Modelv2 {
     }
     
     pub fn load_on_gpu(&mut self, device: &Device, queue: &Queue, texture_bind_group_layout: &BindGroupLayout, joints_bind_group_layout: &BindGroupLayout) {
+        let joints = self.nodes_tree.get_joints();
+        let joints:Vec<[[f32;4];4]> = joints.iter().map(|j| j.to_cols_array_2d()).collect();
+        
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: bytemuck::cast_slice(&self.vertices),
@@ -165,7 +172,7 @@ impl Modelv2 {
         
         let joints_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Joints Buffer"),
-            contents: bytemuck::cast_slice(self.nodes_tree.get_joints().as_slice()),
+            contents: bytemuck::cast_slice(joints.as_slice()),
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         });
         

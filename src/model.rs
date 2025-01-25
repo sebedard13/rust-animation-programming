@@ -14,7 +14,7 @@ pub struct Vertex {
     pub position: [f32; 3],
     pub normal: [f32; 3],
     pub uv: [f32; 2],
-    pub affected_joints: [u16; 4],
+    pub affected_joints: [u32; 4],
     pub joints_weights: [f32; 4],
 }
 
@@ -42,10 +42,10 @@ impl Vertex {
                 wgpu::VertexAttribute {
                     offset: (size_of::<[f32; 3]>() * 2 + size_of::<[f32; 2]>()) as wgpu::BufferAddress,
                     shader_location: 3,
-                    format: wgpu::VertexFormat::Uint16x4,
+                    format: wgpu::VertexFormat::Uint32x4,
                 },
                 wgpu::VertexAttribute {
-                    offset: (size_of::<[f32; 3]>() * 2 + size_of::<[f32; 2]>() + size_of::<[u16; 4]>()) as wgpu::BufferAddress,
+                    offset: (size_of::<[f32; 3]>() * 2 + size_of::<[f32; 2]>() + size_of::<[u32; 4]>()) as wgpu::BufferAddress,
                     shader_location: 4,
                     format: wgpu::VertexFormat::Float32x4,
                 },

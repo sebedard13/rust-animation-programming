@@ -51,8 +51,13 @@ fn vs_main(
         model_mat.model_matrix_1.xyz,
         model_mat.model_matrix_2.xyz,
     );
+    
+    let skinMat = model.joint_weights.x * joints[model.affected_joints.x] +
+    		model.joint_weights.y * joints[model.affected_joints.y] +
+    		model.joint_weights.z * joints[model.affected_joints.z] +
+    		model.joint_weights.w * joints[model.affected_joints.w];
 
-    let world_position: vec4<f32> = model_matrix * vec4<f32>(model.position, 1.0);
+    let world_position: vec4<f32> = model_matrix * skinMat  * vec4<f32>(model.position, 1.0);
     out.clip_position = camera.view_proj * world_position;
     out.tex_coords = model.tex_coords;
     out.world_normal = normalize(normal_matrix * model.normal);
