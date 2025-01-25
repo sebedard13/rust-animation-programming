@@ -12,27 +12,20 @@ pub struct NodeTree {
     nodes: Vec<Node>,
     joints_index: Vec<usize>,
     inverse_bind_matrices: Vec<Mat4>,
-    pub node_to_joint: Vec<usize>,
 }
 
 impl NodeTree {
     pub fn get_joints(&self) -> Vec<Mat4> {
         let mut joints = vec![Mat4::IDENTITY; self.joints_index.len()];
         
-        let order_vec = vec![42,40,29,28,27,2, 1, 0, 14, 13,12,11,6, 5, 4, 3, 10, 9, 8, 7, 26, 25,24,23,18,17,16,15,22, 21,20,19,34, 33,32,31,30,39,38,37,36,35,];
-        for i in  order_vec {
-            self.update_a_node(&mut joints, i);
+        for (joint_index, node_index) in  self.joints_index.iter().enumerate() {
+            let tree_matrix = self.get_global_transform(*node_index);
+            let inverse = self.inverse_bind_matrices[joint_index];
+            let matrix = tree_matrix * inverse;
+
+            joints[joint_index] = matrix;
         }
         joints
-    }
-
-    fn update_a_node(&self, joints: &mut Vec<Mat4>, node_index: usize) {
-        let ind = self.node_to_joint[node_index];
-        let tree_matrix = self.get_global_transform(node_index);
-        let inverse = self.inverse_bind_matrices[ind];
-        let matrix = tree_matrix * inverse;
-        
-        joints[ind] = matrix;
     }
 }
 
@@ -120,15 +113,7 @@ fn find_a_false(visited: &Vec<bool>) -> Option<usize> {
     None
 }
 pub fn create_nodes_tree_from_joints(joints: Vec<usize>, nodes: Vec<gltf::Node>, inverse_bind_matrices: Vec<Mat4>) -> NodeTree {
-
-    
     let mut node_tree = vec![Node::default(); nodes.len()];
-    
-    let mut node_to_joint: Vec<usize> = vec![0; nodes.len()];
-    for (i, joint) in joints.iter().enumerate() {
-        node_to_joint[*joint] = i;
-    }
-    
 
     for (node_index, node) in  nodes.iter().enumerate() {
         let transform = node.transform();
@@ -158,7 +143,7 @@ pub fn create_nodes_tree_from_joints(joints: Vec<usize>, nodes: Vec<gltf::Node>,
         }
     }
 
-    NodeTree { nodes: node_tree, inverse_bind_matrices, joints_index: joints, node_to_joint }
+    NodeTree { nodes: node_tree, inverse_bind_matrices, joints_index: joints, }
 }
 
 #[cfg(test)]
@@ -180,7 +165,7 @@ mod tests {
         
         let tree = vec![parent, child];
         
-        let node_tree = super::NodeTree { nodes: tree, inverse_bind_matrices: Vec::new(), joints_index: Vec::new(), node_to_joint: Vec::new() };
+        let node_tree = super::NodeTree { nodes: tree, inverse_bind_matrices: Vec::new(), joints_index: Vec::new(), };
         
         let child_transform = node_tree.get_global_transform(1);
         assert_eq!(child_transform, glam::Mat4::from_translation(glam::Vec3::new(2.0, 0.0, 0.0)));
