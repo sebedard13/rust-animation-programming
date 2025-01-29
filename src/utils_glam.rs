@@ -284,7 +284,8 @@ pub fn decompose(mut matrix: Mat4) -> (Vec3, Quat, Vec3, Vec3, Vec4) {
     // Check for a coordinate system flip.  If the determinant
 
     let pdum3 = row[1].cross(row[2]);
-    if row[0].dot(pdum3) < 0.0 {
+    let res = row[0].dot(pdum3);
+    if res < 0.0 {
         for i in 0..3 {
             scale[i] *= -1.0;
             row[i] *= -1.0;
@@ -373,6 +374,22 @@ mod tests {
         assert!(vec3_close(skew, skew2));
         assert!(vec4_close(perspective, perspective2));
     
+    }
+
+    #[test]
+    #[ignore]
+    fn perspective_matrix() {
+        let proj = Mat4::perspective_lh(45.0_f32.to_radians(), 4.0/3.0, 0.1, 100.0);
+        let cam = Mat4::look_at_rh(Vec3::new(4.0, 3.0, 3.0), Vec3::ZERO, Vec3::Y);
+        let orient = Mat4::from_scale(Vec3::new(-1.0, 1.0, 1.0));
+        let matrix = proj * cam * orient;
+        let (scale2, orientation2, translation2, skew2, perspective2) = decompose(matrix);
+
+        assert!(vec3_close(Vec3::new(-0.278659, -0.318692, -0.248781), scale2));
+        assert!(quat_close(Quat::from_xyzw(0.298198, 0.196601, 0.891995, 0.277076), orientation2));
+        assert!(vec3_close(Vec3::new(0.0, 0.0, 0.967668), translation2));
+        assert!(vec3_close(Vec3::new(-0.588286, -0.20312, -0.563927), skew2));
+        assert!(vec4_close(Vec4::new(0.0, 0.0, 0.998002, 0.0342655), perspective2));
     }
     
     fn vec3_close(a: Vec3, b: Vec3) -> bool {
