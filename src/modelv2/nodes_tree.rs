@@ -27,6 +27,19 @@ impl NodeTree {
         }
         joints
     }
+
+    pub fn get_joints_double_quat(&self) -> Vec<[glam::Quat;2]> {
+        let mut joints = vec![[glam::Quat::IDENTITY;2]; self.joints_index.len()];
+
+        /*let mat_joints = self.get_joints();
+        for mat_index in 0..mat_joints.len() {
+            let mat = mat_joints[mat_index];
+            let quat = mat.
+            joints[mat_index][0] = quat;
+            joints[mat_index][1] = quat;
+        }*/
+        joints
+    }
 }
 
 impl NodeTree {
