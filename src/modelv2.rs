@@ -152,8 +152,8 @@ impl Modelv2 {
     }
     
     pub fn load_on_gpu(&mut self, device: &Device, queue: &Queue, texture_bind_group_layout: &BindGroupLayout, joints_bind_group_layout: &BindGroupLayout) {
-        let joints = self.nodes_tree.get_joints();
-        let joints:Vec<[[f32;4];4]> = joints.iter().map(|j| j.to_cols_array_2d()).collect();
+        let joints = self.nodes_tree.get_joints_double_quat();
+        let joints:Vec<[[f32;4];2]> = joints.iter().map(|j| [[j[0].x, j[0].y, j[0].z, j[0].w], [j[1].x, j[1].y, j[1].z, j[1].w]]).collect();
         
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),

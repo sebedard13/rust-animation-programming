@@ -1,5 +1,6 @@
 use glam::Mat4;
 use gltf::scene::Transform;
+use crate::utils_glam::decompose;
 
 #[derive(Debug, Clone, Default)]
 pub struct Node {
@@ -31,13 +32,14 @@ impl NodeTree {
     pub fn get_joints_double_quat(&self) -> Vec<[glam::Quat;2]> {
         let mut joints = vec![[glam::Quat::IDENTITY;2]; self.joints_index.len()];
 
-        /*let mat_joints = self.get_joints();
+        let mat_joints = self.get_joints();
         for mat_index in 0..mat_joints.len() {
             let mat = mat_joints[mat_index];
-            let quat = mat.
-            joints[mat_index][0] = quat;
-            joints[mat_index][1] = quat;
-        }*/
+            let (_,orientation,translation,_,_) = decompose(mat);
+            joints[mat_index][0] = orientation;
+            joints[mat_index][1] = glam::Quat::from_xyzw(translation.x, translation.y, translation.z, 0.0) * orientation * 0.5;
+            
+        }
         joints
     }
 }
