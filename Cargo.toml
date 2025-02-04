@@ -20,4 +20,4 @@ image = { version = "0.24", default-features = false, features = [
 log = "0.4"
 lyon = "1.0.1"
 pollster = "0.3"
-wgpu = { version = "*", features = ["dx12", "metal", "webgpu"] }
+wgpu = { version = "^23.0.0", features = ["dx12", "metal", "webgpu"] }
