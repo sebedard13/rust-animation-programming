@@ -59,6 +59,7 @@ impl NodeTree {
         }
     }
 
+    #[allow(dead_code)]
     pub fn print(&self) {
         let mut visited: Vec<bool> = vec![false; self.nodes.len()];
                         // level, node_index
@@ -163,7 +164,7 @@ pub fn create_nodes_tree_from_joints(joints: Vec<usize>, nodes: Vec<gltf::Node>,
 
 #[cfg(test)]
 mod tests {
-    use crate::modelv2::nodes_tree::Node;
+    use super::Node;
 
     #[test]
     fn test_hiearchical_matrix(){

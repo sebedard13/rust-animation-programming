@@ -1,12 +1,10 @@
-use std::num::NonZeroU32;
-use std::path::PathBuf;
 use crate::basic_object::renderer::BasicObjectRenderer;
 use crate::camera::{Camera, CameraMatBuffer};
 use crate::color::color_from_rgba_hex;
 use crate::data::UserDomain;
 use crate::gui::EguiRenderer;
 use crate::light::LightBuffer;
-use crate::model::{Vertex, Model};
+use crate::vertex::Vertex;
 use crate::texture::Texture;
 use crate::{gui, texture};
 use egui_wgpu::wgpu::util::DeviceExt;
@@ -18,7 +16,7 @@ use egui_winit::winit::keyboard::{KeyCode, PhysicalKey};
 use egui_winit::winit::window::Window;
 use glam::{vec3, Mat4};
 use log::info;
-use crate::modelv2::Modelv2;
+use crate::model::Modelv2;
 
 pub struct State<'a> {
     surface: wgpu::Surface<'a>,
@@ -49,8 +47,6 @@ pub struct State<'a> {
     pub model_mat_buffer: wgpu::Buffer,
     light_buffer: wgpu::Buffer,
     light_bind_group: wgpu::BindGroup,
-
-    pub joints_bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl<'a> State<'a> {
@@ -346,8 +342,6 @@ impl<'a> State<'a> {
             light_bind_group,
             model_mat_buffer,
             basic_object_renderer,
-
-            joints_bind_group_layout
         }
     }
 

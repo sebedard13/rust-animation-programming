@@ -4,9 +4,9 @@ use gltf::image::Format;
 use gltf::mesh::util::{ReadIndices, ReadJoints, ReadTexCoords, ReadWeights};
 use wgpu::{BindGroup, BindGroupLayout, Device, Queue};
 use wgpu::util::DeviceExt;
-use crate::model::Vertex;
-use crate::modelv2::nodes_tree::{create_nodes_tree_from_joints, NodeTree};
+use nodes_tree::{NodeTree, create_nodes_tree_from_joints};
 use crate::texture::Texture;
+use crate::vertex::Vertex;
 
 mod nodes_tree;
 
