@@ -11,12 +11,6 @@ pub fn gui(user_domain: &mut UserDomain, ui: &Context) {
         .movable(true)
         .anchor(Align2::LEFT_TOP, [2.0, 2.0])
         .show(&ui, |ui| {
-            let mut new_fps = 0.0;
-            if user_domain.rd_frame_time > 0.0 {
-                new_fps = 1.0 / user_domain.rd_frame_time;
-            }
-            user_domain.current_fps = (0.98 * user_domain.current_fps) + (1.0 - 0.98) * new_fps;
-
             ui.label(format!("FPS {:.2}", user_domain.current_fps));
 
             ui.separator();

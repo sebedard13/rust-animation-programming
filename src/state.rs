@@ -1,3 +1,7 @@
+use std::rc::Rc;
+use std::sync::Arc;
+use std::time;
+use std::time::Duration;
 use crate::basic_object::renderer::BasicObjectRenderer;
 use crate::camera::{Camera, CameraMatBuffer};
 use crate::color::color_from_rgba_hex;
@@ -18,14 +22,14 @@ use glam::{vec3, Mat4};
 use log::info;
 use crate::model::Modelv2;
 
-pub struct State<'a> {
-    surface: wgpu::Surface<'a>,
+pub struct State {
+    surface: wgpu::Surface<'static>,
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     pub(crate) size: PhysicalSize<u32>,
 
-    window: &'a Window,
+    window: Arc<Window>,
 
     render_pipeline: wgpu::RenderPipeline,
     
@@ -47,11 +51,14 @@ pub struct State<'a> {
     pub model_mat_buffer: wgpu::Buffer,
     light_buffer: wgpu::Buffer,
     light_bind_group: wgpu::BindGroup,
+    
+    pub time_prev: time::Instant,
 }
 
-impl<'a> State<'a> {
+impl State {
+    
     // Creating some of the wgpu types requires async code
-    pub(crate) async fn new(window: &'a Window) -> State<'a> {
+    pub async fn new(window: Arc<Window>) -> State {
         let size = window.inner_size();
 
         // The instance is a handle to our GPU
@@ -61,7 +68,7 @@ impl<'a> State<'a> {
             ..Default::default()
         });
 
-        let surface = instance.create_surface(window).unwrap();
+        let surface = instance.create_surface(window.clone()).unwrap();
 
         let adapter: Adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -315,7 +322,7 @@ impl<'a> State<'a> {
         //let woman_model = Model::from_gltf(&device, &queue, &*PathBuf::from("rsc").join("duck").join("glTF").join("Duck.gltf"), &texture_bind_group_layout).unwrap();
         //let woman_model = Model::from_gltf(&device, &queue, &*PathBuf::from("rsc").join("lantern").join("Lantern.gltf"), &texture_bind_group_layout).unwrap();
 
-        let egui_renderer = EguiRenderer::new(&device, config.format, None, 1, &window);
+        let egui_renderer = EguiRenderer::new(&device, config.format, None, 1, window.as_ref());
 
         let mut data = UserDomain::new();
         data.camera.aspect = (size.width as f32) / (size.height as f32);
@@ -342,6 +349,8 @@ impl<'a> State<'a> {
             light_bind_group,
             model_mat_buffer,
             basic_object_renderer,
+            
+            time_prev: time::Instant::now(),
         }
     }
 
@@ -361,7 +370,7 @@ impl<'a> State<'a> {
     }
 
     pub(crate) fn input(&mut self, event: &WindowEvent) -> bool {
-        let event_resp = self.egui_renderer.handle_input(self.window, event);
+        let event_resp = self.egui_renderer.handle_input(self.window.as_ref(), event);
         if event_resp.1 {
             self.window.request_redraw();
         }
@@ -403,11 +412,21 @@ impl<'a> State<'a> {
             _ => false,
         }
     }
-
-    pub(crate) fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+    
+    pub fn update(&mut self, dt: Duration) {
+        self.count_fps(dt);
+        
         self.data.camera.move_update();
-        self.camera_mat_buffer.update(&self.data.camera);
+    }
 
+    pub fn count_fps(&mut self, dt:Duration) {
+        let new_fps = 1.0 /  dt.as_secs_f64();
+        let influence = 0.90;
+        self.data.current_fps = (influence * self.data.current_fps) + (1.0 - influence) * new_fps;
+    }
+    
+    pub(crate) fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+        self.camera_mat_buffer.update(&self.data.camera);
         self.queue.write_buffer(
             &self.camera_buffer,
             0,
