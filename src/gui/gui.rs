@@ -34,6 +34,9 @@ pub fn gui(user_domain: &mut UserDomain, ui: &Context) {
                 ui.add(
                     Slider::new(&mut user_domain.interpolation, 0.0..=1.0).text("Interpolation"),
                 );
+                ui.add(
+                    Slider::new(&mut user_domain.speed, 0.0..=1.0).text("Speed").step_by(0.01),
+                );
                 ui.checkbox(
                     &mut user_domain.draw_world_coordinates,
                     "Draw World Coordinates",

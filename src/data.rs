@@ -7,7 +7,6 @@ use glam::{EulerRot, Mat4, Quat, Vec3};
 pub struct UserDomain {
     pub mouse_locked: bool,
     pub mouse_pos: PhysicalPosition<f64>,
-    pub rd_frame_time: f64,
     pub current_fps: f64,
     pub camera: Camera,
 
@@ -17,6 +16,7 @@ pub struct UserDomain {
     pub draw_world_coordinates: bool,
     pub draw_model_coordinates: bool,
 
+    pub speed: f32,
     pub interpolation: f32,
     pub start_rotation: Vec3,
     pub end_rotation: Vec3,
@@ -39,12 +39,12 @@ impl UserDomain {
         Self {
             mouse_locked: false,
             mouse_pos: PhysicalPosition::new(0.0, 0.0),
-            rd_frame_time: 0.0,
             current_fps: 0.0,
             camera: Camera::new(),
             arrow3d: Vec::new(),
             lines: Vec::new(),
 
+            speed: 0.05,
             interpolation: 0.0,
 
             draw_world_coordinates: true,

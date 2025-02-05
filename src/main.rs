@@ -11,7 +11,6 @@ mod basic_object;
 mod light;
 mod utils_glam;
 
-use std::rc::Rc;
 use std::sync::Arc;
 use crate::state::State;
 use anyhow::Context;

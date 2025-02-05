@@ -1,4 +1,3 @@
-use std::rc::Rc;
 use std::sync::Arc;
 use std::time;
 use std::time::Duration;
@@ -415,11 +414,19 @@ impl State {
     
     pub fn update(&mut self, dt: Duration) {
         self.count_fps(dt);
-        
+        self.update_timeline(dt);
         self.data.camera.move_update();
     }
+    
+    fn update_timeline(&mut self, dt: Duration) {
+        let speed = self.data.speed;
+        self.data.interpolation += dt.as_secs_f32() * speed;
+        if self.data.interpolation > 1.0 {
+            self.data.interpolation = 0.0;
+        }
+    }
 
-    pub fn count_fps(&mut self, dt:Duration) {
+    fn count_fps(&mut self, dt:Duration) {
         let new_fps = 1.0 /  dt.as_secs_f64();
         let influence = 0.90;
         self.data.current_fps = (influence * self.data.current_fps) + (1.0 - influence) * new_fps;
