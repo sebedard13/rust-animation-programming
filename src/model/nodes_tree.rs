@@ -42,6 +42,10 @@ impl NodeTree {
         }
         joints
     }
+    
+    pub fn len(&self) -> usize {
+        self.nodes.len()
+    }
 }
 
 impl NodeTree {
