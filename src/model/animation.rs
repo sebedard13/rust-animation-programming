@@ -5,29 +5,34 @@ pub struct Animation {
 
 #[derive(Default, Clone)]
 pub struct NodeChannels {
-    translation: Option<Channel>,
-    rotation: Option<Channel>,
-    scale: Option<Channel>,
+    pub translation: Option<Channel>,
+    pub rotation: Option<Channel>,
+    pub scale: Option<Channel>,
 }
 
 #[derive(Default, Clone)]
-enum InterpolationType {
+pub enum InterpolationType {
     #[default]
     STEP,
     LINEAR,
     CUBICSPLINE,
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub enum ChannelType {
-    #[default]
     Translation(Vec<glam::Vec3>),
     Rotation(Vec<glam::Quat>),
     Scale(Vec<glam::Vec3>),
 }
 
+impl Default for ChannelType {
+    fn default() -> Self {
+        ChannelType::Translation(Vec::new())
+    }
+}
+
 #[derive(Default, Clone)]
-struct Channel {
+pub struct Channel {
     pub interpolation: InterpolationType,
     pub times: Vec<f32>,
     pub values: ChannelType,

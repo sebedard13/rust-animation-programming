@@ -1,10 +1,10 @@
 use crate::model::animation::{Animation, ChannelType, NodeChannels};
 use crate::texture::Texture;
 use crate::vertex::Vertex;
+use animation::{Channel, InterpolationType};
 use anyhow::{Context, Result};
-use gltf::animation::Property;
+use gltf::animation::util::Rotations;
 use gltf::image::Format;
-use gltf::iter::Animations;
 use gltf::mesh::util::{ReadIndices, ReadJoints, ReadTexCoords, ReadWeights};
 use nodes_tree::{create_nodes_tree_from_joints, NodeTree};
 use std::path::Path;
@@ -170,28 +170,61 @@ impl Modelv2 {
 
         let texture = ImageData::new(image_rgba, image_data.width, image_data.height);
 
-        let animations = gltf
-            .animations()
-            .map(|animation| {
-                let name = animation.name().unwrap_or("No name").to_string();
+        let mut animations = Vec::new();
+        for animation in gltf.animations() {
+            let name = animation.name().unwrap_or("No name").to_string();
 
-                let channels = vec![NodeChannels::default(); nodes_tree.len()];
-                for channel in animation.channels() {
-                    let node_id = channel.target().node().index();
-                    let path = match channel.target().property() {
-                        Property::MorphTargetWeights => unimplemented!("MorphTargetWeights"),
-                        Property::Translation => ChannelType::Translation,
-                        Property::Rotation => ChannelType::Rotation,
-                        Property::Scale => ChannelType::Scale,
-                    };
-                }
-
-                return Animation {
-                    name,
-                    channels: Vec::new(),
+            let mut channels = vec![NodeChannels::default(); nodes_tree.len()];
+            for channel in animation.channels() {
+                let node_id = channel.target().node().index();
+                let reader = channel.reader(|buffer| Some(&buffers[buffer.index()]));
+                let times: Vec<f32> = reader.read_inputs().context("Should have input")?.collect();
+                let values = reader.read_outputs().context("Should have output")?;
+                let interpolation = match channel.sampler().interpolation() {
+                    gltf::animation::Interpolation::Linear => InterpolationType::LINEAR,
+                    gltf::animation::Interpolation::Step => InterpolationType::STEP,
+                    gltf::animation::Interpolation::CubicSpline => InterpolationType::CUBICSPLINE,
                 };
-            })
-            .collect();
+                match values {
+                    gltf::animation::util::ReadOutputs::Translations(iter) => {
+                        let translations: Vec<glam::Vec3> = iter.into_iter().map(|v| glam::Vec3::from(v)).collect();
+                        channels[node_id].translation = Some(Channel {
+                            interpolation: InterpolationType::STEP,
+                            times,
+                            values: ChannelType::Translation(translations),
+                        });
+                    }
+                    gltf::animation::util::ReadOutputs::Rotations(rotations) => {
+                        let rotations = match rotations {
+                            Rotations::F32(iter) => iter.into_iter().map(|v| glam::Quat::from_array(v)).collect(),
+                            _ => unimplemented!("Rotations should be f32"),
+                        };
+
+                        channels[node_id].rotation = Some(Channel {
+                            interpolation,
+                            times,
+                            values: ChannelType::Rotation(rotations),
+                        });
+                    }
+                    gltf::animation::util::ReadOutputs::Scales(iter) => {
+                        let scales: Vec<glam::Vec3> = iter.into_iter().map(|v| glam::Vec3::from(v)).collect();
+                        channels[node_id].scale = Some(Channel {
+                            interpolation: InterpolationType::STEP,
+                            times,
+                            values: ChannelType::Scale(scales),
+                        });
+                    }
+                    gltf::animation::util::ReadOutputs::MorphTargetWeights(_) => {
+                        unimplemented!("Should not be Morph target weights")
+                    }
+                }
+            }
+
+            animations.push(Animation {
+                name,
+                channels: channels,
+            });
+        }
 
         Ok(Self {
             vertices,
