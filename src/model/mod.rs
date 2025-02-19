@@ -36,12 +36,13 @@ pub struct Modelv2 {
     indices: Vec<u16>,
     texture: ImageData,
     nodes_tree: NodeTree,
-    animations: Vec<animation::Animation>,
+    animations: Vec<Animation>,
 
     vertices_buffer: Option<wgpu::Buffer>,
     indices_buffer: Option<wgpu::Buffer>,
     texture_buffer: Option<Texture>,
-    joints_buffer: Option<BindGroup>,
+    joints_buffer: Option<wgpu::Buffer>,
+    joints_bind_group: Option<BindGroup>,
 }
 
 impl Modelv2 {
@@ -174,7 +175,7 @@ impl Modelv2 {
         for animation in gltf.animations() {
             let name = animation.name().unwrap_or("No name").to_string();
 
-            let mut channels = vec![NodeChannels::default(); nodes_tree.len()];
+            let mut channels = vec![None; nodes_tree.len()];
             for channel in animation.channels() {
                 let node_id = channel.target().node().index();
                 let reader = channel.reader(|buffer| Some(&buffers[buffer.index()]));
@@ -188,7 +189,10 @@ impl Modelv2 {
                 match values {
                     gltf::animation::util::ReadOutputs::Translations(iter) => {
                         let translations: Vec<glam::Vec3> = iter.into_iter().map(|v| glam::Vec3::from(v)).collect();
-                        channels[node_id].translation = Some(Channel {
+                        if channels[node_id].is_none() {
+                            channels[node_id] = Some(NodeChannels::default());
+                        }
+                        channels[node_id].as_mut().unwrap().translation = Some(Channel {
                             interpolation: InterpolationType::STEP,
                             times,
                             values: ChannelType::Translation(translations),
@@ -199,8 +203,10 @@ impl Modelv2 {
                             Rotations::F32(iter) => iter.into_iter().map(|v| glam::Quat::from_array(v)).collect(),
                             _ => unimplemented!("Rotations should be f32"),
                         };
-
-                        channels[node_id].rotation = Some(Channel {
+                        if channels[node_id].is_none() {
+                            channels[node_id] = Some(NodeChannels::default());
+                        }
+                        channels[node_id].as_mut().unwrap().rotation = Some(Channel {
                             interpolation,
                             times,
                             values: ChannelType::Rotation(rotations),
@@ -208,7 +214,10 @@ impl Modelv2 {
                     }
                     gltf::animation::util::ReadOutputs::Scales(iter) => {
                         let scales: Vec<glam::Vec3> = iter.into_iter().map(|v| glam::Vec3::from(v)).collect();
-                        channels[node_id].scale = Some(Channel {
+                        if channels[node_id].is_none() {
+                            channels[node_id] = Some(NodeChannels::default());
+                        }
+                        channels[node_id].as_mut().unwrap().scale = Some(Channel {
                             interpolation: InterpolationType::STEP,
                             times,
                             values: ChannelType::Scale(scales),
@@ -236,6 +245,7 @@ impl Modelv2 {
             indices_buffer: None,
             texture_buffer: None,
             joints_buffer: None,
+            joints_bind_group: None,
         })
     }
 
@@ -291,7 +301,30 @@ impl Modelv2 {
         self.vertices_buffer = Some(vertex_buffer);
         self.indices_buffer = Some(index_buffer);
         self.texture_buffer = Some(texture_buffer);
-        self.joints_buffer = Some(joints_bind_group);
+        self.joints_buffer = Some(joints_buffer);
+        self.joints_bind_group = Some(joints_bind_group);
+    }
+    
+    pub fn render_animation(&mut self, time:f32, animation_index: Option<usize>, queue: &Queue){
+        let animation = match animation_index {
+            Some(index) => &self.animations[index],
+            None => &self.animations[0],
+        };
+
+        for (node_index, node) in self.nodes_tree.nodes.iter_mut().enumerate() {
+            let channels = &animation.channels[node_index];
+            if let Some(channels) = channels {
+                node.transform = channels.eval(time);
+            }
+        }
+        
+        let joints = self.nodes_tree.get_joints_double_quat();
+        let joints: Vec<[[f32; 4]; 2]> = joints
+            .iter()
+            .map(|j| [[j[0].x, j[0].y, j[0].z, j[0].w], [j[1].x, j[1].y, j[1].z, j[1].w]])
+            .collect();
+        
+       queue.write_buffer(self.joints_buffer.as_ref().unwrap(), 0, bytemuck::cast_slice(joints.as_slice()));
     }
 
     pub fn draw(&self, render_pass: &mut wgpu::RenderPass) {
@@ -301,7 +334,7 @@ impl Modelv2 {
             wgpu::IndexFormat::Uint16,
         );
         render_pass.set_bind_group(0, self.texture_buffer.as_ref().unwrap().get_bind_group(), &[]);
-        render_pass.set_bind_group(3, self.joints_buffer.as_ref().unwrap(), &[]);
+        render_pass.set_bind_group(3, self.joints_bind_group.as_ref().unwrap(), &[]);
         render_pass.draw_indexed(0..self.indices.len() as u32, 0, 0..1);
     }
 }

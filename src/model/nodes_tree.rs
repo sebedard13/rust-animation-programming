@@ -6,11 +6,11 @@ use crate::utils_glam::decompose;
 pub struct Node {
     parent: Option<usize>,
     name: String,
-    transform: Mat4,
+    pub transform: Mat4,
 }
 
 pub struct NodeTree {
-    nodes: Vec<Node>,
+    pub nodes: Vec<Node>,
     joints_index: Vec<usize>,
     inverse_bind_matrices: Vec<Mat4>,
 }

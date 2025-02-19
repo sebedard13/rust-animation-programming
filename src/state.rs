@@ -454,6 +454,8 @@ impl State {
                 &self.data.light_color,
             )]),
         );
+        
+        self.woman_model.render_animation(self.data.interpolation, Some(0), &self.queue);
 
         let output = self.surface.get_current_texture()?;
         let view = output
