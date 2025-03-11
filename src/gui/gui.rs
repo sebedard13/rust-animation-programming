@@ -1,5 +1,5 @@
 use crate::data::UserDomain;
-use egui::{Align2, Context, Slider};
+use egui::{Align2, Context, Slider, ComboBox};
 
 pub fn gui(user_domain: &mut UserDomain, ui: &Context) {
     egui::Window::new("Infos")
@@ -31,12 +31,6 @@ pub fn gui(user_domain: &mut UserDomain, ui: &Context) {
 
             ui.separator();
             ui.collapsing("Model", |ui| {
-                ui.add(
-                    Slider::new(&mut user_domain.interpolation, 0.0..=1.0).text("Interpolation"),
-                );
-                ui.add(
-                    Slider::new(&mut user_domain.speed, 0.0..=1.0).text("Speed").step_by(0.01),
-                );
                 ui.checkbox(
                     &mut user_domain.draw_world_coordinates,
                     "Draw World Coordinates",
@@ -96,6 +90,23 @@ pub fn gui(user_domain: &mut UserDomain, ui: &Context) {
                     ui.add(Slider::new(&mut user_domain.end_tangent.y, -10.0..=10.0));
                     ui.add(Slider::new(&mut user_domain.end_tangent.z, -10.0..=10.0));
                 });
+            });
+
+            ui.collapsing("Animation", |ui| {
+               ComboBox::from_label("Animation").selected_text(format!("{:?}", user_domain.animations[user_domain.selected_animation]))
+                   .show_ui(ui, |ui| {
+                       for i in 0..user_domain.animations.len() {
+                           ui.selectable_value(&mut user_domain.selected_animation, i, &user_domain.animations[i]) ;
+                       }
+                   });
+                   
+                ui.add(Slider::new(&mut user_domain.speed, 0.0..=1.0).text("Speed").step_by(0.01));
+                ui.add(
+                    Slider::new(&mut user_domain.interpolation, 0.0..=1.0).text("Interpolation"),
+                );
+                if ui.button("Reset Animation").clicked() {
+                    user_domain.reset_animation();
+                }
             });
 
             ui.collapsing("Light", |ui| {

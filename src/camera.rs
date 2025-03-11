@@ -29,7 +29,7 @@ pub struct Camera {
 impl Camera {
     pub fn new() -> Self {
         Self {
-            position: Vec3::new(0.0, 1.0, 2.0),
+            position: Vec3::new(0.0, 4.0, 6.0),
             view_direction: Vec3::ZERO,
             up: Vec3::Y,
             view_azimuth: 0.0,

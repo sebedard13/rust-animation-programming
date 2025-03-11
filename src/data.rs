@@ -32,6 +32,9 @@ pub struct UserDomain {
 
     pub light_pos: Vec3,
     pub light_color: Vec3,
+    
+    pub selected_animation: usize,
+    pub animations: Vec<String>,
 }
 
 impl UserDomain {
@@ -62,6 +65,9 @@ impl UserDomain {
 
             light_pos: Vec3::new(4.0, 5.0, -3.0),
             light_color: Vec3::new(0.5, 0.5, 0.5),
+            
+            selected_animation: 0,
+            animations: vec!["Default".to_string(),],
         }
     }
 

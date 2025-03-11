@@ -326,6 +326,7 @@ impl State {
         let mut data = UserDomain::new();
         data.camera.aspect = (size.width as f32) / (size.height as f32);
         data.camera.update_vectors();
+        data.animations = woman_model.get_animation_names();
 
         let basic_object_renderer =
             BasicObjectRenderer::new(&device, &camera_bind_group_layout, &config, &mut data);
@@ -455,7 +456,15 @@ impl State {
             )]),
         );
         
-        self.woman_model.render_animation(self.data.interpolation, Some(0), &self.queue);
+        let animation = {
+            if self.data.animations.len() > 0 {
+                Some(self.data.selected_animation)
+            } else {
+                None
+            }
+        };
+        
+        self.woman_model.render_animation(self.data.interpolation,  animation, &self.queue);
 
         let output = self.surface.get_current_texture()?;
         let view = output

@@ -1,5 +1,6 @@
 use glam::Mat4;
 use std::ops::{Add, Mul, Sub};
+use crate::model::nodes_tree::Node;
 
 pub struct Animation {
     pub name: String,
@@ -14,21 +15,21 @@ pub struct NodeChannels {
 }
 
 impl NodeChannels {
-    pub fn eval(&self, t: f32) -> Mat4 {
+    pub fn eval(&self, node: &mut Node, t: f32) -> Mat4 {
         let mut translation = Mat4::IDENTITY;
         let mut rotation = Mat4::IDENTITY;
         let mut scale = Mat4::IDENTITY;
 
         if let Some(channel) = &self.translation {
-            translation = channel.eval(t);
+            translation = channel.eval(node, t);
         }
         if let Some(channel) = &self.rotation {
-            rotation = channel.eval(t);
+            rotation = channel.eval(node, t);
         }
         if let Some(channel) = &self.scale {
-            scale = channel.eval(t);
+            scale = channel.eval(node, t);
         }
-
+        
         translation * rotation * scale
     }
 }
@@ -52,7 +53,9 @@ impl InterpolationType {
                 let prev_time = timings[indexes.0];
                 let next_time = timings[indexes.1];
                 let t = (time - prev_time) / (next_time - prev_time);
-                values[indexes.0] + (values[indexes.1] - values[indexes.0]) * t
+                let prev = values[indexes.0];
+                let next = values[indexes.1];
+                prev * (1.0 - t) + next * t
             }
             InterpolationType::CUBICSPLINE => {
                 let prev_time = timings[indexes.0];
@@ -102,19 +105,22 @@ pub struct Channel {
 }
 
 impl Channel {
-    pub fn eval(&self, t: f32) -> Mat4 {
+    pub fn eval(&self, node: &mut Node, t: f32) -> Mat4 {
         match &self.values {
             ChannelType::Translation(translation) => {
                 let indexes = self.get_indexes(t);
-                Mat4::from_translation(self.interpolation.interpolate(translation, &self.times, indexes, t))
+                node.translate = self.interpolation.interpolate(translation, &self.times, indexes, t);
+                Mat4::from_translation(node.translate)
             }
             ChannelType::Rotation(rotation) => {
                 let indexes = self.get_indexes(t);
-                Mat4::from_quat(self.interpolation.interpolate(rotation, &self.times, indexes, t))
+                node.rotate = self.interpolation.interpolate(rotation, &self.times, indexes, t);
+                Mat4::from_quat(node.rotate)
             }
             ChannelType::Scale(scale) => {
                 let indexes = self.get_indexes(t);
-                Mat4::from_scale(self.interpolation.interpolate(scale, &self.times, indexes, t))
+                node.scale = self.interpolation.interpolate(scale, &self.times, indexes, t);
+                Mat4::from_scale(node.scale)
             }
         }
     }

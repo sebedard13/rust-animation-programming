@@ -8,6 +8,9 @@ use gltf::image::Format;
 use gltf::mesh::util::{ReadIndices, ReadJoints, ReadTexCoords, ReadWeights};
 use nodes_tree::{create_nodes_tree_from_joints, NodeTree};
 use std::path::Path;
+use glam::Quat;
+use gltf::buffer::Data;
+use gltf::Document;
 use wgpu::util::DeviceExt;
 use wgpu::{BindGroup, BindGroupLayout, Device, Queue};
 
@@ -171,6 +174,23 @@ impl Modelv2 {
 
         let texture = ImageData::new(image_rgba, image_data.width, image_data.height);
 
+        let animations = Self::load_animation(gltf, &buffers, &nodes_tree)?;
+        nodes_tree.print();
+        Ok(Self {
+            vertices,
+            indices,
+            texture,
+            nodes_tree,
+            animations,
+            vertices_buffer: None,
+            indices_buffer: None,
+            texture_buffer: None,
+            joints_buffer: None,
+            joints_bind_group: None,
+        })
+    }
+
+    fn load_animation(gltf: Document, buffers: &Vec<Data>, nodes_tree: &NodeTree) -> Result<Vec<Animation>> {
         let mut animations = Vec::new();
         for animation in gltf.animations() {
             let name = animation.name().unwrap_or("No name").to_string();
@@ -186,42 +206,56 @@ impl Modelv2 {
                     gltf::animation::Interpolation::Step => InterpolationType::STEP,
                     gltf::animation::Interpolation::CubicSpline => InterpolationType::CUBICSPLINE,
                 };
+                println!("Node name: {}", nodes_tree.nodes[node_id].name);
+                let isLeftUpLeg = nodes_tree.nodes[node_id].name == "LeftUpLeg";
+                if nodes_tree.nodes[node_id].name == "LeftUpLeg" {
+                    println!("Node deactivated: {}", nodes_tree.nodes[node_id].name);
+                    continue
+                }
                 match values {
                     gltf::animation::util::ReadOutputs::Translations(iter) => {
-                        let translations: Vec<glam::Vec3> = iter.into_iter().map(|v| glam::Vec3::from(v)).collect();
+                        /*let translations: Vec<glam::Vec3> = iter.into_iter().map(|v| glam::Vec3::from(v)).collect();
                         if channels[node_id].is_none() {
                             channels[node_id] = Some(NodeChannels::default());
                         }
                         channels[node_id].as_mut().unwrap().translation = Some(Channel {
-                            interpolation: InterpolationType::STEP,
+                            interpolation,
                             times,
                             values: ChannelType::Translation(translations),
-                        });
+                        });*/
                     }
                     gltf::animation::util::ReadOutputs::Rotations(rotations) => {
-                        let rotations = match rotations {
-                            Rotations::F32(iter) => iter.into_iter().map(|v| glam::Quat::from_array(v)).collect(),
+                       let rotations: Vec<Quat> = match rotations {
+                            Rotations::F32(iter) => iter.into_iter().map(|v| {
+                                Quat::from_array(v)
+                            }).map(|q| q.normalize()).collect(),
                             _ => unimplemented!("Rotations should be f32"),
                         };
                         if channels[node_id].is_none() {
                             channels[node_id] = Some(NodeChannels::default());
+                        }
+                        if (isLeftUpLeg) {
+                           for i in 0..rotations.len() {
+                               println!("Time: {}, Rotation (w,x,y,z): {}, {}, {}, {}", times[i], rotations[i].w, rotations[i].x, rotations[i].y, rotations[i].z);
+                           }
                         }
                         channels[node_id].as_mut().unwrap().rotation = Some(Channel {
                             interpolation,
                             times,
                             values: ChannelType::Rotation(rotations),
                         });
+
                     }
                     gltf::animation::util::ReadOutputs::Scales(iter) => {
-                        let scales: Vec<glam::Vec3> = iter.into_iter().map(|v| glam::Vec3::from(v)).collect();
+                        /*let scales: Vec<glam::Vec3> = iter.into_iter().map(|v| glam::Vec3::from(v)).collect();
                         if channels[node_id].is_none() {
                             channels[node_id] = Some(NodeChannels::default());
                         }
                         channels[node_id].as_mut().unwrap().scale = Some(Channel {
-                            interpolation: InterpolationType::STEP,
+                            interpolation,
                             times,
                             values: ChannelType::Scale(scales),
-                        });
+                        });*/
                     }
                     gltf::animation::util::ReadOutputs::MorphTargetWeights(_) => {
                         unimplemented!("Should not be Morph target weights")
@@ -233,20 +267,9 @@ impl Modelv2 {
                 name,
                 channels: channels,
             });
+            return Ok(animations);
         }
-
-        Ok(Self {
-            vertices,
-            indices,
-            texture,
-            nodes_tree,
-            animations,
-            vertices_buffer: None,
-            indices_buffer: None,
-            texture_buffer: None,
-            joints_buffer: None,
-            joints_bind_group: None,
-        })
+        Ok(animations)
     }
 
     pub fn load_on_gpu(
@@ -314,7 +337,7 @@ impl Modelv2 {
         for (node_index, node) in self.nodes_tree.nodes.iter_mut().enumerate() {
             let channels = &animation.channels[node_index];
             if let Some(channels) = channels {
-                node.transform = channels.eval(time);
+                channels.eval(node, time);
             }
         }
         
@@ -336,6 +359,10 @@ impl Modelv2 {
         render_pass.set_bind_group(0, self.texture_buffer.as_ref().unwrap().get_bind_group(), &[]);
         render_pass.set_bind_group(3, self.joints_bind_group.as_ref().unwrap(), &[]);
         render_pass.draw_indexed(0..self.indices.len() as u32, 0, 0..1);
+    }
+
+    pub fn get_animation_names(&self) -> Vec<String>{
+        self.animations.iter().map(|a| a.name.clone()).collect()
     }
 }
 

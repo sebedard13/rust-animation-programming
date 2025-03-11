@@ -5,8 +5,10 @@ use crate::utils_glam::decompose;
 #[derive(Debug, Clone, Default)]
 pub struct Node {
     parent: Option<usize>,
-    name: String,
-    pub transform: Mat4,
+    pub(crate) name: String,
+    pub translate: glam::Vec3,
+    pub rotate: glam::Quat,
+    pub scale: glam::Vec3,
 }
 
 pub struct NodeTree {
@@ -50,7 +52,7 @@ impl NodeTree {
 
 impl NodeTree {
     pub fn get_local_transform(&self, node_index: usize) -> Mat4 {
-        self.nodes[node_index].transform
+        Mat4::from_translation(self.nodes[node_index].translate) * Mat4::from_quat(self.nodes[node_index].rotate) * Mat4::from_scale(self.nodes[node_index].scale)
     }
 
     pub fn get_global_transform(&self, node_index: usize) -> Mat4 {
@@ -137,8 +139,8 @@ pub fn create_nodes_tree_from_joints(joints: Vec<usize>, nodes: Vec<gltf::Node>,
 
     for (node_index, node) in  nodes.iter().enumerate() {
         let transform = node.transform();
-        let mat4 = match transform {
-            Transform::Matrix { matrix } => Mat4::from_cols_array_2d(&matrix),
+        let (t,r,s) = match transform {
+            Transform::Matrix { matrix } => unimplemented!("Matrix not implemented"),
             Transform::Decomposed {
                 rotation,
                 translation,
@@ -147,11 +149,14 @@ pub fn create_nodes_tree_from_joints(joints: Vec<usize>, nodes: Vec<gltf::Node>,
                 let translation = glam::Vec3::from(translation);
                 let rotation = glam::Quat::from_array(rotation);
                 let scale = glam::Vec3::from(scale);
-                Mat4::from_translation(translation) * Mat4::from_quat(rotation) * Mat4::from_scale(scale)
+                (translation, rotation, scale)
             }
         };
+        
+        node_tree[node_index].translate = t;
+        node_tree[node_index].rotate = r;
+        node_tree[node_index].scale = s;
 
-        node_tree[node_index].transform = mat4;
 
         if let Some(name) = node.name() {
             node_tree[node_index].name = name.to_string();
@@ -175,12 +180,16 @@ mod tests {
         let parent = Node {
             parent: None,
             name: "parent".to_string(),
-            transform: glam::Mat4::from_translation(glam::Vec3::new(1.0, 0.0, 0.0)),
+            translate: glam::Vec3::new(1.0, 0.0, 0.0),
+            rotate: glam::Quat::IDENTITY,
+            scale: glam::Vec3::new(1.0, 1.0, 1.0),
         };
         let child = Node {
             parent: Some(0),
             name: "child".to_string(),
-            transform: glam::Mat4::from_translation(glam::Vec3::new(1.0, 0.0, 0.0)),
+            translate: glam::Vec3::new(1.0, 0.0, 0.0),
+            rotate: glam::Quat::IDENTITY,
+            scale: glam::Vec3::new(1.0, 1.0, 1.0),
         };
         
         let tree = vec![parent, child];
