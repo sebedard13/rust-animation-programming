@@ -16,6 +16,8 @@ pub struct UserDomain {
     pub draw_world_coordinates: bool,
     pub draw_model_coordinates: bool,
 
+    pub double_quat_joints_render: bool,
+
     pub speed: f32,
     pub interpolation: f32,
     pub start_rotation: Vec3,
@@ -46,9 +48,11 @@ impl UserDomain {
             camera: Camera::new(),
             arrow3d: Vec::new(),
             lines: Vec::new(),
+            
+            double_quat_joints_render: false,
 
-            speed: 0.05,
-            interpolation: 0.0,
+            speed: 0.00,
+            interpolation: 0.07,
 
             draw_world_coordinates: true,
             draw_model_coordinates: true,

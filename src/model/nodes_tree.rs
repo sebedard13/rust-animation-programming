@@ -37,9 +37,10 @@ impl NodeTree {
         let mat_joints = self.get_joints();
         for mat_index in 0..mat_joints.len() {
             let mat = mat_joints[mat_index];
-            let (_,orientation,translation,_,_) = decompose(mat);
-            joints[mat_index][0] = orientation;
-            joints[mat_index][1] = glam::Quat::from_xyzw(translation.x, translation.y, translation.z, 0.0) * orientation * 0.5;
+            //let (_,orientation,translation,_,_) = decompose(mat);
+            joints[mat_index][0] = glam::Quat::from_mat4(&mat);
+            //joints[mat_index][1] = glam::Quat::from_xyzw(translation.x, translation.y, translation.z, 0.0) * orientation * 0.5;
+            joints[mat_index][1] = glam::Quat::from_xyzw(mat.w_axis.x, mat.w_axis.y, mat.w_axis.z, 0.0) * joints[mat_index][0] * 0.5;
             
         }
         joints

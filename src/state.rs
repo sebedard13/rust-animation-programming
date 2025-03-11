@@ -31,6 +31,7 @@ pub struct State {
     window: Arc<Window>,
 
     render_pipeline: wgpu::RenderPipeline,
+    render_pipeline_dq: wgpu::RenderPipeline,
     
     woman_model: Modelv2,
     
@@ -273,11 +274,59 @@ impl State {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: None,
-                buffers: &[Vertex::desc(), mat4_buffer_layout],
+                buffers: &[Vertex::desc(), mat4_buffer_layout.clone()],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
+                entry_point: None,
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
+                polygon_mode: wgpu::PolygonMode::Fill,
+                // Requires Features::DEPTH_CLIP_CONTROL
+                unclipped_depth: false,
+                // Requires Features::CONSERVATIVE_RASTERIZATION
+                conservative: false,
+            },
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: wgpu::TextureFormat::Depth32Float,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less,
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+            cache: None,
+        });
+        
+        let shader_dq = device.create_shader_module(wgpu::include_wgsl!("shader_dq.wgsl"));
+        let render_pipeline_dq = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Render Pipeline DQ"),
+            layout: Some(&render_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader_dq,
+                entry_point: None,
+                buffers: &[Vertex::desc(), mat4_buffer_layout],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader_dq,
                 entry_point: None,
                 targets: &[Some(wgpu::ColorTargetState {
                     format: config.format,
@@ -339,6 +388,7 @@ impl State {
             size,
             data,
             render_pipeline,
+            render_pipeline_dq,
             woman_model,
             depth_texture,
             egui_renderer,
@@ -464,7 +514,7 @@ impl State {
             }
         };
         
-        self.woman_model.render_animation(self.data.interpolation,  animation, &self.queue);
+        self.woman_model.render_animation(self.data.interpolation,  animation, &self.queue, self.data.double_quat_joints_render);
 
         let output = self.surface.get_current_texture()?;
         let view = output
@@ -499,7 +549,11 @@ impl State {
                 timestamp_writes: None,
             });
 
-            render_pass.set_pipeline(&self.render_pipeline);
+            if self.data.double_quat_joints_render{
+                render_pass.set_pipeline(&self.render_pipeline_dq);
+            }else{
+                render_pass.set_pipeline(&self.render_pipeline);
+            }
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
             render_pass.set_bind_group(2, &self.light_bind_group, &[]);
             render_pass.set_vertex_buffer(1, self.model_mat_buffer.slice(..));

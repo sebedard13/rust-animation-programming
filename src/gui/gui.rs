@@ -93,6 +93,8 @@ pub fn gui(user_domain: &mut UserDomain, ui: &Context) {
             });
 
             ui.collapsing("Animation", |ui| {
+               ui.checkbox(&mut user_domain.double_quat_joints_render, "Double Quat Joints"); 
+                
                ComboBox::from_label("Animation").selected_text(format!("{:?}", user_domain.animations[user_domain.selected_animation]))
                    .show_ui(ui, |ui| {
                        for i in 0..user_domain.animations.len() {

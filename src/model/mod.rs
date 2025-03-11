@@ -8,7 +8,7 @@ use gltf::image::Format;
 use gltf::mesh::util::{ReadIndices, ReadJoints, ReadTexCoords, ReadWeights};
 use nodes_tree::{create_nodes_tree_from_joints, NodeTree};
 use std::path::Path;
-use glam::Quat;
+use glam::{Mat4, Quat};
 use gltf::buffer::Data;
 use gltf::Document;
 use wgpu::util::DeviceExt;
@@ -206,15 +206,15 @@ impl Modelv2 {
                     gltf::animation::Interpolation::Step => InterpolationType::STEP,
                     gltf::animation::Interpolation::CubicSpline => InterpolationType::CUBICSPLINE,
                 };
-                println!("Node name: {}", nodes_tree.nodes[node_id].name);
+               /* println!("Node name: {}", nodes_tree.nodes[node_id].name);
                 let isLeftUpLeg = nodes_tree.nodes[node_id].name == "LeftUpLeg";
                 if nodes_tree.nodes[node_id].name == "LeftUpLeg" {
                     println!("Node deactivated: {}", nodes_tree.nodes[node_id].name);
                     continue
-                }
+                }*/
                 match values {
                     gltf::animation::util::ReadOutputs::Translations(iter) => {
-                        /*let translations: Vec<glam::Vec3> = iter.into_iter().map(|v| glam::Vec3::from(v)).collect();
+                        let translations: Vec<glam::Vec3> = iter.into_iter().map(|v| glam::Vec3::from(v)).collect();
                         if channels[node_id].is_none() {
                             channels[node_id] = Some(NodeChannels::default());
                         }
@@ -222,7 +222,7 @@ impl Modelv2 {
                             interpolation,
                             times,
                             values: ChannelType::Translation(translations),
-                        });*/
+                        });
                     }
                     gltf::animation::util::ReadOutputs::Rotations(rotations) => {
                        let rotations: Vec<Quat> = match rotations {
@@ -234,11 +234,11 @@ impl Modelv2 {
                         if channels[node_id].is_none() {
                             channels[node_id] = Some(NodeChannels::default());
                         }
-                        if (isLeftUpLeg) {
+                       /* if (isLeftUpLeg) {
                            for i in 0..rotations.len() {
                                println!("Time: {}, Rotation (w,x,y,z): {}, {}, {}, {}", times[i], rotations[i].w, rotations[i].x, rotations[i].y, rotations[i].z);
                            }
-                        }
+                        }*/
                         channels[node_id].as_mut().unwrap().rotation = Some(Channel {
                             interpolation,
                             times,
@@ -247,7 +247,7 @@ impl Modelv2 {
 
                     }
                     gltf::animation::util::ReadOutputs::Scales(iter) => {
-                        /*let scales: Vec<glam::Vec3> = iter.into_iter().map(|v| glam::Vec3::from(v)).collect();
+                        let scales: Vec<glam::Vec3> = iter.into_iter().map(|v| glam::Vec3::from(v)).collect();
                         if channels[node_id].is_none() {
                             channels[node_id] = Some(NodeChannels::default());
                         }
@@ -255,7 +255,7 @@ impl Modelv2 {
                             interpolation,
                             times,
                             values: ChannelType::Scale(scales),
-                        });*/
+                        });
                     }
                     gltf::animation::util::ReadOutputs::MorphTargetWeights(_) => {
                         unimplemented!("Should not be Morph target weights")
@@ -280,10 +280,7 @@ impl Modelv2 {
         joints_bind_group_layout: &BindGroupLayout,
     ) {
         let joints = self.nodes_tree.get_joints_double_quat();
-        let joints: Vec<[[f32; 4]; 2]> = joints
-            .iter()
-            .map(|j| [[j[0].x, j[0].y, j[0].z, j[0].w], [j[1].x, j[1].y, j[1].z, j[1].w]])
-            .collect();
+        let joints: Vec<[[f32; 4]; 4]> = vec![Mat4::IDENTITY.to_cols_array_2d(); joints.len()];
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
@@ -328,7 +325,7 @@ impl Modelv2 {
         self.joints_bind_group = Some(joints_bind_group);
     }
     
-    pub fn render_animation(&mut self, time:f32, animation_index: Option<usize>, queue: &Queue){
+    pub fn render_animation(&mut self, time:f32, animation_index: Option<usize>, queue: &Queue, double_quat_joints_render: bool){
         let animation = match animation_index {
             Some(index) => &self.animations[index],
             None => &self.animations[0],
@@ -341,13 +338,22 @@ impl Modelv2 {
             }
         }
         
-        let joints = self.nodes_tree.get_joints_double_quat();
-        let joints: Vec<[[f32; 4]; 2]> = joints
-            .iter()
-            .map(|j| [[j[0].x, j[0].y, j[0].z, j[0].w], [j[1].x, j[1].y, j[1].z, j[1].w]])
-            .collect();
-        
-       queue.write_buffer(self.joints_buffer.as_ref().unwrap(), 0, bytemuck::cast_slice(joints.as_slice()));
+ 
+        if double_quat_joints_render {
+            let joints = self.nodes_tree.get_joints_double_quat();
+            let joints: Vec<[[f32; 4]; 2]> = joints
+                .iter()
+                .map(|j| [[j[0].x, j[0].y, j[0].z, j[0].w], [j[1].x, j[1].y, j[1].z, j[1].w]])
+                .collect();
+            queue.write_buffer(self.joints_buffer.as_ref().unwrap(), 0, bytemuck::cast_slice(joints.as_slice()));
+        } else {
+            let joints = self.nodes_tree.get_joints();
+            let joints: Vec<[[f32; 4]; 4]> = joints
+                .iter()
+                .map(|j| j.to_cols_array_2d())
+                .collect();
+            queue.write_buffer(self.joints_buffer.as_ref().unwrap(), 0, bytemuck::cast_slice(joints.as_slice()));
+        }
     }
 
     pub fn draw(&self, render_pass: &mut wgpu::RenderPass) {
