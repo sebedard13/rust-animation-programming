@@ -319,7 +319,7 @@ impl Modelv2 {
         for (node_index, node) in self.nodes_tree.nodes.iter_mut().enumerate() {
             let channels = &animation.channels[node_index];
             if let Some(channels) = channels {
-                channels.eval(node, time);
+                channels.eval(time, node);
             }
         }
  

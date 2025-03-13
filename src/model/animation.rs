@@ -15,22 +15,16 @@ pub struct NodeChannels {
 }
 
 impl NodeChannels {
-    pub fn eval(&self, node: &mut Node, t: f32) -> Mat4 {
-        let mut translation = Mat4::IDENTITY;
-        let mut rotation = Mat4::IDENTITY;
-        let mut scale = Mat4::IDENTITY;
-
+    pub fn eval(&self, t: f32, node: &mut Node) {
         if let Some(channel) = &self.translation {
-            translation = channel.eval(node, t);
+          channel.eval(t, node);
         }
         if let Some(channel) = &self.rotation {
-            rotation = channel.eval(node, t);
+            channel.eval(t, node);
         }
         if let Some(channel) = &self.scale {
-            scale = channel.eval(node, t);
+            channel.eval(t, node);
         }
-        
-        translation * rotation * scale
     }
 }
 
@@ -144,22 +138,19 @@ pub struct Channel {
 }
 
 impl Channel {
-    pub fn eval(&self, node: &mut Node, t: f32) -> Mat4 {
+    pub fn eval(&self, t: f32, node: &mut Node)  {
         match &self.values {
             ChannelType::Translation(translation) => {
                 let indexes = self.get_indexes(t);
                 node.translate = self.interpolation.interpolate(translation, &self.times, indexes, t);
-                Mat4::from_translation(node.translate)
             }
             ChannelType::Rotation(rotation) => {
                 let indexes = self.get_indexes(t);
                 node.rotate = self.interpolation.s_interpolate(rotation, &self.times, indexes, t);
-                Mat4::from_quat(node.rotate)
             }
             ChannelType::Scale(scale) => {
                 let indexes = self.get_indexes(t);
                 node.scale = self.interpolation.interpolate(scale, &self.times, indexes, t);
-                Mat4::from_scale(node.scale)
             }
         }
     }
