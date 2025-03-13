@@ -35,7 +35,6 @@ impl EguiRenderer {
         let visuals = Visuals {
             window_rounding: egui::Rounding::same(BORDER_RADIUS),
             window_shadow: Shadow::NONE,
-            // menu_rounding: todo!(),
             ..Default::default()
         };
 

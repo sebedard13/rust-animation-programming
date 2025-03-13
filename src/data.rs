@@ -51,8 +51,8 @@ impl UserDomain {
             
             double_quat_joints_render: false,
 
-            speed: 0.00,
-            interpolation: 0.07,
+            speed: 0.05,
+            interpolation: 0.0,
 
             draw_world_coordinates: true,
             draw_model_coordinates: true,

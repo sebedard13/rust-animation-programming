@@ -1,4 +1,4 @@
-use glam::Mat4;
+use glam::{Mat4, Quat};
 use std::ops::{Add, Mul, Sub};
 use crate::model::nodes_tree::Node;
 
@@ -34,7 +34,7 @@ impl NodeChannels {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub enum InterpolationType {
     #[default]
     STEP,
@@ -82,6 +82,45 @@ impl InterpolationType {
             }
         }
     }
+
+    pub fn s_interpolate(&self, values: &Vec<Quat>, timings: &Vec<f32>, indexes: (usize, usize), time: f32) -> Quat
+    {
+        match self {
+            InterpolationType::STEP => values[indexes.0],
+            InterpolationType::LINEAR => {
+                let prev_time = timings[indexes.0];
+                let next_time = timings[indexes.1];
+                let t = (time - prev_time) / (next_time - prev_time);
+                let prev = values[indexes.0];
+                let next = values[indexes.1];
+                prev.slerp(next, t)
+            }
+            InterpolationType::CUBICSPLINE => {
+                let prev_time = timings[indexes.0];
+                let next_time = timings[indexes.1];
+                let delta_time = next_time - prev_time;
+
+                let prev_tangent = values[indexes.0 * 3 + 2] * delta_time;
+                let next_tangent = values[indexes.1 * 3 + 0] * delta_time;
+
+                let t = (time - prev_time) / delta_time;
+
+                let prev_point = values[indexes.0 * 3 + 1];
+                let next_point = values[indexes.1 * 3 + 1];
+
+                let t2 = t * t;
+                let t3 = t2 * t;
+
+                let h00 = 2.0 * t3 - 3.0 * t2 + 1.0;
+                let h10 = t3 - 2.0 * t2 + t;
+                let h01 = -2.0 * t3 + 3.0 * t2;
+                let h11 = t3 - t2;
+                unimplemented!("Need to implement cubic slerp for quaternions");
+
+                prev_point * h00 + prev_tangent * h10 + next_point * h01 + next_tangent * h11
+            }
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -114,7 +153,7 @@ impl Channel {
             }
             ChannelType::Rotation(rotation) => {
                 let indexes = self.get_indexes(t);
-                node.rotate = self.interpolation.interpolate(rotation, &self.times, indexes, t);
+                node.rotate = self.interpolation.s_interpolate(rotation, &self.times, indexes, t);
                 Mat4::from_quat(node.rotate)
             }
             ChannelType::Scale(scale) => {

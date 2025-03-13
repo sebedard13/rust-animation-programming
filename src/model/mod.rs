@@ -175,7 +175,6 @@ impl Modelv2 {
         let texture = ImageData::new(image_rgba, image_data.width, image_data.height);
 
         let animations = Self::load_animation(gltf, &buffers, &nodes_tree)?;
-        nodes_tree.print();
         Ok(Self {
             vertices,
             indices,
@@ -206,12 +205,6 @@ impl Modelv2 {
                     gltf::animation::Interpolation::Step => InterpolationType::STEP,
                     gltf::animation::Interpolation::CubicSpline => InterpolationType::CUBICSPLINE,
                 };
-               /* println!("Node name: {}", nodes_tree.nodes[node_id].name);
-                let isLeftUpLeg = nodes_tree.nodes[node_id].name == "LeftUpLeg";
-                if nodes_tree.nodes[node_id].name == "LeftUpLeg" {
-                    println!("Node deactivated: {}", nodes_tree.nodes[node_id].name);
-                    continue
-                }*/
                 match values {
                     gltf::animation::util::ReadOutputs::Translations(iter) => {
                         let translations: Vec<glam::Vec3> = iter.into_iter().map(|v| glam::Vec3::from(v)).collect();
@@ -226,19 +219,12 @@ impl Modelv2 {
                     }
                     gltf::animation::util::ReadOutputs::Rotations(rotations) => {
                        let rotations: Vec<Quat> = match rotations {
-                            Rotations::F32(iter) => iter.into_iter().map(|v| {
-                                Quat::from_array(v)
-                            }).map(|q| q.normalize()).collect(),
+                            Rotations::F32(iter) => iter.into_iter().map(|v| Quat::from_array(v)).map(|q| q.normalize()).collect(),
                             _ => unimplemented!("Rotations should be f32"),
                         };
                         if channels[node_id].is_none() {
                             channels[node_id] = Some(NodeChannels::default());
                         }
-                       /* if (isLeftUpLeg) {
-                           for i in 0..rotations.len() {
-                               println!("Time: {}, Rotation (w,x,y,z): {}, {}, {}, {}", times[i], rotations[i].w, rotations[i].x, rotations[i].y, rotations[i].z);
-                           }
-                        }*/
                         channels[node_id].as_mut().unwrap().rotation = Some(Channel {
                             interpolation,
                             times,
@@ -267,7 +253,6 @@ impl Modelv2 {
                 name,
                 channels: channels,
             });
-            return Ok(animations);
         }
         Ok(animations)
     }
@@ -337,7 +322,6 @@ impl Modelv2 {
                 channels.eval(node, time);
             }
         }
-        
  
         if double_quat_joints_render {
             let joints = self.nodes_tree.get_joints_double_quat();
