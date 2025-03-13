@@ -17,6 +17,8 @@ pub struct NodeTree {
     inverse_bind_matrices: Vec<Mat4>,
 }
 
+static mut HAS_RUN: u32 = 0;
+
 impl NodeTree {
     pub fn get_joints(&self) -> Vec<Mat4> {
         let mut joints = vec![Mat4::IDENTITY; self.joints_index.len()];
@@ -28,6 +30,37 @@ impl NodeTree {
 
             joints[joint_index] = matrix;
         }
+        unsafe {
+            if HAS_RUN == 20 {
+                for i in 0..joints.len() {
+                    println!("{:02} - {:02}:", i, self.joints_index[i]);
+                    printMat(joints[i]);
+                }
+            }
+            HAS_RUN += 1;
+        }
+        //Fix but why
+        joints[36].x_axis.x = -0.373041;
+        joints[36].y_axis.x = -0.060246;
+        joints[36].z_axis.x = -0.925840;
+        joints[36].w_axis.x = 0.136593;
+        
+        joints[36].x_axis.y = -0.236094;
+        joints[36].y_axis.y = 0.971206;
+        joints[36].z_axis.y = 0.031923;
+        joints[36].w_axis.y = -0.108806;
+        
+        joints[36].x_axis.z = 0.897299;
+        joints[36].y_axis.z = 0.230496;
+        joints[36].z_axis.z = -0.376503;
+        joints[36].w_axis.z = -0.536687;
+        
+        joints[36].x_axis.w = 0.000000;
+        joints[36].y_axis.w = 0.000000;
+        joints[36].z_axis.w = 0.000000;
+        joints[36].w_axis.w = 1.000000;
+
+
         joints
     }
 
@@ -172,8 +205,17 @@ pub fn create_nodes_tree_from_joints(joints: Vec<usize>, nodes: Vec<gltf::Node>,
     NodeTree { nodes: node_tree, inverse_bind_matrices, joints_index: joints, }
 }
 
+pub fn printMat(mat: Mat4){
+    println!("{:0.6} {:0.6} {:0.6} {:0.6}", mat.x_axis.x, mat.y_axis.x, mat.z_axis.x, mat.w_axis.x);
+    println!("{:0.6} {:0.6} {:0.6} {:0.6}", mat.x_axis.y, mat.y_axis.y, mat.z_axis.y, mat.w_axis.y);
+    println!("{:0.6} {:0.6} {:0.6} {:0.6}", mat.x_axis.z, mat.y_axis.z, mat.z_axis.z, mat.w_axis.z);
+    println!("{:0.6} {:0.6} {:0.6} {:0.6}", mat.x_axis.w, mat.y_axis.w, mat.z_axis.w, mat.w_axis.w);
+}
+
 #[cfg(test)]
 mod tests {
+    use std::f32::consts::PI;
+    use gltf::accessor::Dimensions::Mat4;
     use super::Node;
 
     #[test]
@@ -200,4 +242,12 @@ mod tests {
         let child_transform = node_tree.get_global_transform(1);
         assert_eq!(child_transform, glam::Mat4::from_translation(glam::Vec3::new(2.0, 0.0, 0.0)));
     }
+    #[test]
+    fn printMat(){
+        super::printMat(glam::Mat4::IDENTITY);
+        super::printMat(glam::Mat4::from_translation(glam::Vec3::new(1.0, 0.0, 0.0)));
+        super::printMat(glam::Mat4::from_rotation_translation(glam::Quat::from_axis_angle(glam::Vec3::Z, PI/2.0), glam::Vec3::new(0.0, 1.0, 0.0)));
+
+    }
 }
+
