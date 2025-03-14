@@ -29,12 +29,12 @@ pub struct UserDomain {
     pub start_tangent: Vec3,
     pub end_pos: Vec3,
     pub end_tangent: Vec3,
-    
+
     pub scale: f32,
 
     pub light_pos: Vec3,
     pub light_color: Vec3,
-    
+
     pub selected_animation: usize,
     pub animations: Vec<String>,
 }
@@ -48,7 +48,7 @@ impl UserDomain {
             camera: Camera::new(),
             arrow3d: Vec::new(),
             lines: Vec::new(),
-            
+
             double_quat_joints_render: false,
 
             speed: 0.05,
@@ -64,14 +64,14 @@ impl UserDomain {
             start_tangent: Vec3::new(-10.0, -8.0, 8.0),
             end_pos: Vec3::new(4.0, 2.0, -2.0),
             end_tangent: Vec3::new(-6.0, 5.0, -6.0),
-            
+
             scale: 1.0,
 
             light_pos: Vec3::new(4.0, 5.0, -3.0),
             light_color: Vec3::new(0.5, 0.5, 0.5),
-            
+
             selected_animation: 0,
-            animations: vec!["Default".to_string(),],
+            animations: vec!["Default".to_string()],
         }
     }
 
@@ -86,9 +86,9 @@ impl UserDomain {
         self.start_tangent = Vec3::new(-10.0, -8.0, 8.0);
         self.end_pos = Vec3::new(4.0, 2.0, -2.0);
         self.end_tangent = Vec3::new(-6.0, 5.0, -6.0);
-        
+
         self.scale = 1.0;
-        
+
         self.light_pos = Vec3::new(4.0, 5.0, -3.0);
         self.light_color = Vec3::new(0.5, 0.5, 0.5);
     }
@@ -156,7 +156,7 @@ impl UserDomain {
             self.end_pos,
         );
 
-        Mat4::from_scale_rotation_translation(Vec3::new(self.scale,self.scale,self.scale),rotation, pos)
+        Mat4::from_scale_rotation_translation(Vec3::new(self.scale, self.scale, self.scale), rotation, pos)
     }
 
     pub fn load_arrow(&mut self) -> Vec<BasicObjectInstance> {
@@ -188,8 +188,8 @@ impl UserDomain {
     }
 
     pub fn calculate_line(&mut self) -> bool {
-        let l1 = Self::create_line_mat_instance(self.start_pos, self.start_tangent+ self.start_pos);
-        let l2 = Self::create_line_mat_instance(self.end_pos, self.end_tangent+ self.end_pos);
+        let l1 = Self::create_line_mat_instance(self.start_pos, self.start_tangent + self.start_pos);
+        let l2 = Self::create_line_mat_instance(self.end_pos, self.end_tangent + self.end_pos);
 
         let mut lines = vec![
             BasicObjectInstance {
@@ -206,20 +206,8 @@ impl UserDomain {
         for i in 0..=(nb_lines_for_spline - 1) {
             let t0 = i as f32 / (nb_lines_for_spline as f32);
             let t1 = (i + 1) as f32 / (nb_lines_for_spline as f32);
-            let p0 = hermite_spline(
-                t0,
-                self.start_pos,
-                self.start_tangent,
-                self.end_tangent,
-                self.end_pos,
-            );
-            let p1 = hermite_spline(
-                t1,
-                self.start_pos,
-                self.start_tangent,
-                self.end_tangent,
-                self.end_pos,
-            );
+            let p0 = hermite_spline(t0, self.start_pos, self.start_tangent, self.end_tangent, self.end_pos);
+            let p1 = hermite_spline(t1, self.start_pos, self.start_tangent, self.end_tangent, self.end_pos);
             let l = Self::create_line_mat_instance(p0, p1);
             lines.push(BasicObjectInstance {
                 model: l,
@@ -246,8 +234,7 @@ impl UserDomain {
         let up = Vec3::NEG_Y;
         let axis = dir.cross(up).normalize();
         let angle = dir.dot(up).acos();
-        let rotation =
-            Mat4::from_rotation_translation(Quat::from_axis_angle(axis, angle), Vec3::ZERO);
+        let rotation = Mat4::from_rotation_translation(Quat::from_axis_angle(axis, angle), Vec3::ZERO);
         let scale = Mat4::from_scale(Vec3::new(1.0, len, 1.0));
         let translation = Mat4::from_translation(from);
         let flip_y = Mat4::from_scale(Vec3::new(1.0, -1.0, 1.0));

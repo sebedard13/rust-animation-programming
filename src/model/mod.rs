@@ -3,14 +3,14 @@ use crate::texture::Texture;
 use crate::vertex::Vertex;
 use animation::{Channel, InterpolationType};
 use anyhow::{Context, Result};
+use glam::{Mat4, Quat};
 use gltf::animation::util::Rotations;
+use gltf::buffer::Data;
 use gltf::image::Format;
 use gltf::mesh::util::{ReadIndices, ReadJoints, ReadTexCoords, ReadWeights};
+use gltf::Document;
 use nodes_tree::{create_nodes_tree_from_joints, NodeTree};
 use std::path::Path;
-use glam::{Mat4, Quat};
-use gltf::buffer::Data;
-use gltf::Document;
 use wgpu::util::DeviceExt;
 use wgpu::{BindGroup, BindGroupLayout, Device, Queue};
 
@@ -218,8 +218,12 @@ impl Modelv2 {
                         });
                     }
                     gltf::animation::util::ReadOutputs::Rotations(rotations) => {
-                       let rotations: Vec<Quat> = match rotations {
-                            Rotations::F32(iter) => iter.into_iter().map(|v| Quat::from_array(v)).map(|q| q.normalize()).collect(),
+                        let rotations: Vec<Quat> = match rotations {
+                            Rotations::F32(iter) => iter
+                                .into_iter()
+                                .map(|v| Quat::from_array(v))
+                                .map(|q| q.normalize())
+                                .collect(),
                             _ => unimplemented!("Rotations should be f32"),
                         };
                         if channels[node_id].is_none() {
@@ -230,7 +234,6 @@ impl Modelv2 {
                             times,
                             values: ChannelType::Rotation(rotations),
                         });
-
                     }
                     gltf::animation::util::ReadOutputs::Scales(iter) => {
                         let scales: Vec<glam::Vec3> = iter.into_iter().map(|v| glam::Vec3::from(v)).collect();
@@ -258,10 +261,7 @@ impl Modelv2 {
     }
 
     pub fn load_on_gpu(
-        &mut self,
-        device: &Device,
-        queue: &Queue,
-        texture_bind_group_layout: &BindGroupLayout,
+        &mut self, device: &Device, queue: &Queue, texture_bind_group_layout: &BindGroupLayout,
         joints_bind_group_layout: &BindGroupLayout,
     ) {
         let joints = self.nodes_tree.get_joints_double_quat();
@@ -309,8 +309,10 @@ impl Modelv2 {
         self.joints_buffer = Some(joints_buffer);
         self.joints_bind_group = Some(joints_bind_group);
     }
-    
-    pub fn render_animation(&mut self, time:f32, animation_index: Option<usize>, queue: &Queue, double_quat_joints_render: bool){
+
+    pub fn render_animation(
+        &mut self, time: f32, animation_index: Option<usize>, queue: &Queue, double_quat_joints_render: bool,
+    ) {
         let animation = match animation_index {
             Some(index) => &self.animations[index],
             None => &self.animations[0],
@@ -322,21 +324,26 @@ impl Modelv2 {
                 channels.eval(time, node);
             }
         }
- 
+
         if double_quat_joints_render {
             let joints = self.nodes_tree.get_joints_double_quat();
             let joints: Vec<[[f32; 4]; 2]> = joints
                 .iter()
                 .map(|j| [[j[0].x, j[0].y, j[0].z, j[0].w], [j[1].x, j[1].y, j[1].z, j[1].w]])
                 .collect();
-            queue.write_buffer(self.joints_buffer.as_ref().unwrap(), 0, bytemuck::cast_slice(joints.as_slice()));
+            queue.write_buffer(
+                self.joints_buffer.as_ref().unwrap(),
+                0,
+                bytemuck::cast_slice(joints.as_slice()),
+            );
         } else {
             let joints = self.nodes_tree.get_joints();
-            let joints: Vec<[[f32; 4]; 4]> = joints
-                .iter()
-                .map(|j| j.to_cols_array_2d())
-                .collect();
-            queue.write_buffer(self.joints_buffer.as_ref().unwrap(), 0, bytemuck::cast_slice(joints.as_slice()));
+            let joints: Vec<[[f32; 4]; 4]> = joints.iter().map(|j| j.to_cols_array_2d()).collect();
+            queue.write_buffer(
+                self.joints_buffer.as_ref().unwrap(),
+                0,
+                bytemuck::cast_slice(joints.as_slice()),
+            );
         }
     }
 
@@ -351,7 +358,7 @@ impl Modelv2 {
         render_pass.draw_indexed(0..self.indices.len() as u32, 0, 0..1);
     }
 
-    pub fn get_animation_names(&self) -> Vec<String>{
+    pub fn get_animation_names(&self) -> Vec<String> {
         self.animations.iter().map(|a| a.name.clone()).collect()
     }
 }

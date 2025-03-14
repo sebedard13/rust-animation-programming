@@ -1,6 +1,6 @@
+use crate::utils_glam::decompose;
 use glam::Mat4;
 use gltf::scene::Transform;
-use crate::utils_glam::decompose;
 
 #[derive(Debug, Clone, Default)]
 pub struct Node {
@@ -20,34 +20,34 @@ pub struct NodeTree {
 impl NodeTree {
     pub fn get_joints(&self) -> Vec<Mat4> {
         let mut joints = vec![Mat4::IDENTITY; self.joints_index.len()];
-        
-        for (joint_index, node_index) in  self.joints_index.iter().enumerate() {
+
+        for (joint_index, node_index) in self.joints_index.iter().enumerate() {
             let tree_matrix = self.get_global_transform(*node_index);
             let inverse = self.inverse_bind_matrices[joint_index];
             let matrix = tree_matrix * inverse;
 
             joints[joint_index] = matrix;
         }
-       
+
         joints
     }
 
-    pub fn get_joints_double_quat(&self) -> Vec<[glam::Quat;2]> {
-        let mut joints = vec![[glam::Quat::IDENTITY;2]; self.joints_index.len()];
+    pub fn get_joints_double_quat(&self) -> Vec<[glam::Quat; 2]> {
+        let mut joints = vec![[glam::Quat::IDENTITY; 2]; self.joints_index.len()];
 
         let mat_joints = self.get_joints();
         for mat_index in 0..mat_joints.len() {
             let mat = mat_joints[mat_index];
-            let (_,orientation,translation,_,_) = decompose(mat);
+            let (_, orientation, translation, _, _) = decompose(mat);
             joints[mat_index][0] = orientation;
-            joints[mat_index][1] = glam::Quat::from_xyzw(translation.x, translation.y, translation.z, 0.0) * orientation * 0.5;
+            joints[mat_index][1] =
+                glam::Quat::from_xyzw(translation.x, translation.y, translation.z, 0.0) * orientation * 0.5;
             /*joints[mat_index][0] = glam::Quat::from_mat4(&mat);
             joints[mat_index][1] = glam::Quat::from_xyzw(mat.w_axis.x, mat.w_axis.y, mat.w_axis.z, 0.0) * joints[mat_index][0] * 0.5;*/
-            
         }
         joints
     }
-    
+
     pub fn len(&self) -> usize {
         self.nodes.len()
     }
@@ -55,15 +55,15 @@ impl NodeTree {
 
 impl NodeTree {
     pub fn get_local_transform(&self, node_index: usize) -> Mat4 {
-        Mat4::from_translation(self.nodes[node_index].translate) * Mat4::from_quat(self.nodes[node_index].rotate) * Mat4::from_scale(self.nodes[node_index].scale)
+        Mat4::from_translation(self.nodes[node_index].translate)
+            * Mat4::from_quat(self.nodes[node_index].rotate)
+            * Mat4::from_scale(self.nodes[node_index].scale)
     }
 
     pub fn get_global_transform(&self, node_index: usize) -> Mat4 {
         let parent = self.nodes[node_index].parent;
         match parent {
-            Some(parent_index) => {
-                self.get_global_transform(parent_index) * self.get_local_transform(node_index)
-            }
+            Some(parent_index) => self.get_global_transform(parent_index) * self.get_local_transform(node_index),
             None => self.get_local_transform(node_index),
         }
     }
@@ -71,7 +71,7 @@ impl NodeTree {
     #[allow(dead_code)]
     pub fn print(&self) {
         let mut visited: Vec<bool> = vec![false; self.nodes.len()];
-                        // level, node_index
+        // level, node_index
         let mut tree: Vec<(usize, usize)> = Vec::<(usize, usize)>::new();
 
         let mut root = 0;
@@ -94,25 +94,16 @@ impl NodeTree {
         }
     }
 
-    fn print_info_rec(
-        &self,
-        node_index: usize,
-        visited: &mut Vec<bool>,
-        tree: &mut Vec<(usize, usize)>,
-    ) -> usize {
+    fn print_info_rec(&self, node_index: usize, visited: &mut Vec<bool>, tree: &mut Vec<(usize, usize)>) -> usize {
         visited[node_index] = true;
         let parent = self.nodes[node_index].parent;
 
         match parent {
             Some(parent_index) => {
                 if visited[parent_index] {
-                    let parents_len = tree
-                        .iter()
-                        .find(|(_, index)| *index == parent_index)
-                        .unwrap()
-                        .0 +1;
+                    let parents_len = tree.iter().find(|(_, index)| *index == parent_index).unwrap().0 + 1;
                     tree.push((parents_len, node_index));
-                    
+
                     return parents_len;
                 }
 
@@ -137,13 +128,18 @@ fn find_a_false(visited: &Vec<bool>) -> Option<usize> {
     }
     None
 }
-pub fn create_nodes_tree_from_joints(joints: Vec<usize>, nodes: Vec<gltf::Node>, inverse_bind_matrices: Vec<Mat4>) -> NodeTree {
+pub fn create_nodes_tree_from_joints(
+    joints: Vec<usize>, nodes: Vec<gltf::Node>, inverse_bind_matrices: Vec<Mat4>,
+) -> NodeTree {
     let mut node_tree = vec![Node::default(); nodes.len()];
 
-    for (node_index, node) in  nodes.iter().enumerate() {
+    for (node_index, node) in nodes.iter().enumerate() {
         let transform = node.transform();
-        let (t,r,s) = match transform {
-            Transform::Matrix { matrix } => unimplemented!("Matrix not implemented"),
+        let (t, r, s) = match transform {
+            Transform::Matrix { matrix } => {
+                let (s, r, t) = glam::Mat4::from_cols_array_2d(&matrix).to_scale_rotation_translation();
+                (t, r, s)
+            }
             Transform::Decomposed {
                 rotation,
                 translation,
@@ -155,11 +151,10 @@ pub fn create_nodes_tree_from_joints(joints: Vec<usize>, nodes: Vec<gltf::Node>,
                 (translation, rotation, scale)
             }
         };
-        
+
         node_tree[node_index].translate = t;
         node_tree[node_index].rotate = r;
         node_tree[node_index].scale = s;
-
 
         if let Some(name) = node.name() {
             node_tree[node_index].name = name.to_string();
@@ -171,16 +166,20 @@ pub fn create_nodes_tree_from_joints(joints: Vec<usize>, nodes: Vec<gltf::Node>,
         }
     }
 
-    NodeTree { nodes: node_tree, inverse_bind_matrices, joints_index: joints, }
+    NodeTree {
+        nodes: node_tree,
+        inverse_bind_matrices,
+        joints_index: joints,
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::f32::consts::PI;
     use super::Node;
+    use std::f32::consts::PI;
 
     #[test]
-    fn test_hiearchical_matrix(){
+    fn test_hiearchical_matrix() {
         let parent = Node {
             parent: None,
             name: "parent".to_string(),
@@ -195,13 +194,19 @@ mod tests {
             rotate: glam::Quat::IDENTITY,
             scale: glam::Vec3::new(1.0, 1.0, 1.0),
         };
-        
+
         let tree = vec![parent, child];
-        
-        let node_tree = super::NodeTree { nodes: tree, inverse_bind_matrices: Vec::new(), joints_index: Vec::new(), };
-        
+
+        let node_tree = super::NodeTree {
+            nodes: tree,
+            inverse_bind_matrices: Vec::new(),
+            joints_index: Vec::new(),
+        };
+
         let child_transform = node_tree.get_global_transform(1);
-        assert_eq!(child_transform, glam::Mat4::from_translation(glam::Vec3::new(2.0, 0.0, 0.0)));
+        assert_eq!(
+            child_transform,
+            glam::Mat4::from_translation(glam::Vec3::new(2.0, 0.0, 0.0))
+        );
     }
 }
-

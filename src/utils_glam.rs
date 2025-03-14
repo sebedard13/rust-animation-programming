@@ -7,7 +7,7 @@ pub fn decompose(mut matrix: Mat4) -> (Vec3, Quat, Vec3, Vec3, Vec4) {
     let mut orientation = Quat::IDENTITY;
     let translation;
     let mut skew = Vec3::ZERO;
-    let perspective ;
+    let perspective;
 
     // Normalize the matrix.
     if matrix.w_axis.w == 0.0 {
@@ -32,24 +32,13 @@ pub fn decompose(mut matrix: Mat4) -> (Vec3, Quat, Vec3, Vec3, Vec4) {
     perspective_matrix.w_axis[3] = 1.0;
 
     if perspective_matrix.determinant() == 0.0 {
-        return (
-            Vec3::ZERO,
-            Quat::IDENTITY,
-            Vec3::ZERO,
-            Vec3::ZERO,
-            Vec4::ZERO,
-        );
+        return (Vec3::ZERO, Quat::IDENTITY, Vec3::ZERO, Vec3::ZERO, Vec4::ZERO);
     }
 
     // First, isolate perspective.  This is the messiest.
     if matrix.x_axis.w != 0.0 || matrix.y_axis.w != 0.0 || matrix.z_axis.w != 0.0 {
         // rightHandSide is the right hand side of the equation.
-        let right_hand_side = Vec4::new(
-            matrix.x_axis.w,
-            matrix.y_axis.w,
-            matrix.z_axis.w,
-            matrix.w_axis.w,
-        );
+        let right_hand_side = Vec4::new(matrix.x_axis.w, matrix.y_axis.w, matrix.z_axis.w, matrix.w_axis.w);
 
         // Solve the equation by inverting PerspectiveMatrix and multiplying
         // rightHandSide by the inverse.  (This is the easiest way, not
@@ -186,8 +175,8 @@ fn combine(a: Vec3, b: Vec3, t1: f32, t2: f32) -> Vec3 {
 
 #[cfg(test)]
 mod tests {
-    use std::f32::consts::PI;
     use super::*;
+    use std::f32::consts::PI;
     #[test]
     fn matrix_created() {
         let scale = Vec3::new(2.0, 0.2, 1.0);
@@ -204,37 +193,45 @@ mod tests {
         assert!(vec3_close(translation, translation2));
         assert!(vec3_close(skew, skew2));
         assert!(vec4_close(perspective, perspective2));
-    
     }
 
     #[test]
     #[ignore]
     fn perspective_matrix() {
-        let proj = Mat4::perspective_lh(45.0_f32.to_radians(), 4.0/3.0, 0.1, 100.0);
+        let proj = Mat4::perspective_lh(45.0_f32.to_radians(), 4.0 / 3.0, 0.1, 100.0);
         let cam = Mat4::look_at_rh(Vec3::new(4.0, 3.0, 3.0), Vec3::ZERO, Vec3::Y);
         let orient = Mat4::from_scale(Vec3::new(-1.0, 1.0, 1.0));
         let matrix = proj * cam * orient;
         let (scale2, orientation2, translation2, skew2, perspective2) = decompose(matrix);
 
         assert!(vec3_close(Vec3::new(-0.278659, -0.318692, -0.248781), scale2));
-        assert!(quat_close(Quat::from_xyzw(0.298198, 0.196601, 0.891995, 0.277076), orientation2));
+        assert!(quat_close(
+            Quat::from_xyzw(0.298198, 0.196601, 0.891995, 0.277076),
+            orientation2
+        ));
         assert!(vec3_close(Vec3::new(0.0, 0.0, 0.967668), translation2));
         assert!(vec3_close(Vec3::new(-0.588286, -0.20312, -0.563927), skew2));
         assert!(vec4_close(Vec4::new(0.0, 0.0, 0.998002, 0.0342655), perspective2));
     }
-    
+
     fn vec3_close(a: Vec3, b: Vec3) -> bool {
         let epsilon = 0.0001;
         (a.x - b.x).abs() < epsilon && (a.y - b.y).abs() < epsilon && (a.z - b.z).abs() < epsilon
     }
-    
+
     fn quat_close(a: Quat, b: Quat) -> bool {
         let epsilon = 0.0001;
-        (a.x - b.x).abs() < epsilon && (a.y - b.y).abs() < epsilon && (a.z - b.z).abs() < epsilon && (a.w - b.w).abs() < epsilon
+        (a.x - b.x).abs() < epsilon
+            && (a.y - b.y).abs() < epsilon
+            && (a.z - b.z).abs() < epsilon
+            && (a.w - b.w).abs() < epsilon
     }
-    
+
     fn vec4_close(a: Vec4, b: Vec4) -> bool {
         let epsilon = 0.0001;
-        (a.x - b.x).abs() < epsilon && (a.y - b.y).abs() < epsilon && (a.z - b.z).abs() < epsilon && (a.w - b.w).abs() < epsilon
+        (a.x - b.x).abs() < epsilon
+            && (a.y - b.y).abs() < epsilon
+            && (a.z - b.z).abs() < epsilon
+            && (a.w - b.w).abs() < epsilon
     }
 }

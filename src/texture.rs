@@ -1,6 +1,6 @@
-use wgpu::{BindGroupLayout, Device, Queue, Sampler, TextureView};
 use wgpu;
 use wgpu::Label;
+use wgpu::{BindGroupLayout, Device, Queue, Sampler, TextureView};
 
 pub struct Texture {
     pub texture: TextureView,
@@ -9,7 +9,7 @@ pub struct Texture {
 }
 
 impl Texture {
-    pub fn from_bytes(device: &Device, queue: &Queue, data: &[u8], w: u32, h: u32)-> Self {
+    pub fn from_bytes(device: &Device, queue: &Queue, data: &[u8], w: u32, h: u32) -> Self {
         let texture_size = wgpu::Extent3d {
             width: w,
             height: h,

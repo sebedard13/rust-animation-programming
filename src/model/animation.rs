@@ -1,6 +1,6 @@
-use glam::{Mat4, Quat};
-use std::ops::{Add, Mul, Sub};
 use crate::model::nodes_tree::Node;
+use glam::Quat;
+use std::ops::{Add, Mul, Sub};
 
 pub struct Animation {
     pub name: String,
@@ -17,7 +17,7 @@ pub struct NodeChannels {
 impl NodeChannels {
     pub fn eval(&self, t: f32, node: &mut Node) {
         if let Some(channel) = &self.translation {
-          channel.eval(t, node);
+            channel.eval(t, node);
         }
         if let Some(channel) = &self.rotation {
             channel.eval(t, node);
@@ -77,8 +77,7 @@ impl InterpolationType {
         }
     }
 
-    pub fn s_interpolate(&self, values: &Vec<Quat>, timings: &Vec<f32>, indexes: (usize, usize), time: f32) -> Quat
-    {
+    pub fn s_interpolate(&self, values: &Vec<Quat>, timings: &Vec<f32>, indexes: (usize, usize), time: f32) -> Quat {
         match self {
             InterpolationType::STEP => values[indexes.0],
             InterpolationType::LINEAR => {
@@ -90,7 +89,7 @@ impl InterpolationType {
                 prev.slerp(next, t)
             }
             InterpolationType::CUBICSPLINE => {
-                let prev_time = timings[indexes.0];
+                /*let prev_time = timings[indexes.0];
                 let next_time = timings[indexes.1];
                 let delta_time = next_time - prev_time;
 
@@ -109,9 +108,9 @@ impl InterpolationType {
                 let h10 = t3 - 2.0 * t2 + t;
                 let h01 = -2.0 * t3 + 3.0 * t2;
                 let h11 = t3 - t2;
-                unimplemented!("Need to implement cubic slerp for quaternions");
-
                 prev_point * h00 + prev_tangent * h10 + next_point * h01 + next_tangent * h11
+                */
+                unimplemented!("Need to implement cubic slerp for quaternions");
             }
         }
     }
@@ -138,7 +137,7 @@ pub struct Channel {
 }
 
 impl Channel {
-    pub fn eval(&self, t: f32, node: &mut Node)  {
+    pub fn eval(&self, t: f32, node: &mut Node) {
         match &self.values {
             ChannelType::Translation(translation) => {
                 let indexes = self.get_indexes(t);

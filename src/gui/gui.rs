@@ -1,5 +1,5 @@
 use crate::data::UserDomain;
-use egui::{Align2, Context, Slider, ComboBox};
+use egui::{Align2, ComboBox, Context, Slider};
 
 pub fn gui(user_domain: &mut UserDomain, ui: &Context) {
     egui::Window::new("Infos")
@@ -17,46 +17,30 @@ pub fn gui(user_domain: &mut UserDomain, ui: &Context) {
             ui.collapsing("Camera", |ui| {
                 ui.add(Slider::new(&mut user_domain.camera.fovy, 30.0..=120.0).text("Fov"));
                 ui.label(format!("Azimuth: {:.2}", user_domain.camera.view_azimuth));
-                ui.label(format!(
-                    "Elevation: {:.2}",
-                    user_domain.camera.view_elevation
-                ));
+                ui.label(format!("Elevation: {:.2}", user_domain.camera.view_elevation));
                 ui.label(format!(
                     "Position: ({:.2}, {:.2}, {:.2})",
-                    user_domain.camera.position.x,
-                    user_domain.camera.position.y,
-                    user_domain.camera.position.z
+                    user_domain.camera.position.x, user_domain.camera.position.y, user_domain.camera.position.z
                 ));
             });
 
             ui.separator();
             ui.collapsing("Model", |ui| {
-                ui.checkbox(
-                    &mut user_domain.draw_world_coordinates,
-                    "Draw World Coordinates",
+                ui.checkbox(&mut user_domain.draw_world_coordinates, "Draw World Coordinates");
+                ui.checkbox(&mut user_domain.draw_model_coordinates, "Draw Model Coordinates");
+                ui.add(
+                    Slider::new(&mut user_domain.scale, 0.001..=100.0)
+                        .text("Scale")
+                        .step_by(0.01),
                 );
-                ui.checkbox(
-                    &mut user_domain.draw_model_coordinates,
-                    "Draw Model Coordinates",
-                );
-                ui.add(Slider::new(&mut user_domain.scale, 0.001..=100.0).text("Scale").step_by(0.01));
-                if ui.button("Reset Animation").clicked(){ 
+                if ui.button("Reset Animation").clicked() {
                     user_domain.reset_animation();
                 }
                 ui.label("Start rotation");
                 ui.horizontal(|ui| {
-                    ui.add(Slider::new(
-                        &mut user_domain.start_rotation.x,
-                        -180.0..=180.0,
-                    ));
-                    ui.add(Slider::new(
-                        &mut user_domain.start_rotation.y,
-                        -180.0..=180.0,
-                    ));
-                    ui.add(Slider::new(
-                        &mut user_domain.start_rotation.z,
-                        -180.0..=180.0,
-                    ));
+                    ui.add(Slider::new(&mut user_domain.start_rotation.x, -180.0..=180.0));
+                    ui.add(Slider::new(&mut user_domain.start_rotation.y, -180.0..=180.0));
+                    ui.add(Slider::new(&mut user_domain.start_rotation.z, -180.0..=180.0));
                 });
                 ui.label("End rotation");
                 ui.horizontal(|ui| {
@@ -93,19 +77,22 @@ pub fn gui(user_domain: &mut UserDomain, ui: &Context) {
             });
 
             ui.collapsing("Animation", |ui| {
-               ui.checkbox(&mut user_domain.double_quat_joints_render, "Double Quat Joints"); 
-                
-               ComboBox::from_label("Animation").selected_text(format!("{:?}", user_domain.animations[user_domain.selected_animation]))
-                   .show_ui(ui, |ui| {
-                       for i in 0..user_domain.animations.len() {
-                           ui.selectable_value(&mut user_domain.selected_animation, i, &user_domain.animations[i]) ;
-                       }
-                   });
-                   
-                ui.add(Slider::new(&mut user_domain.speed, 0.0..=1.0).text("Speed").step_by(0.01));
+                ui.checkbox(&mut user_domain.double_quat_joints_render, "Double Quat Joints");
+
+                ComboBox::from_label("Animation")
+                    .selected_text(format!("{:?}", user_domain.animations[user_domain.selected_animation]))
+                    .show_ui(ui, |ui| {
+                        for i in 0..user_domain.animations.len() {
+                            ui.selectable_value(&mut user_domain.selected_animation, i, &user_domain.animations[i]);
+                        }
+                    });
+
                 ui.add(
-                    Slider::new(&mut user_domain.interpolation, 0.0..=1.0).text("Interpolation"),
+                    Slider::new(&mut user_domain.speed, 0.0..=1.0)
+                        .text("Speed")
+                        .step_by(0.01),
                 );
+                ui.add(Slider::new(&mut user_domain.interpolation, 0.0..=1.0).text("Interpolation"));
                 if ui.button("Reset Animation").clicked() {
                     user_domain.reset_animation();
                 }

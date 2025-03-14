@@ -37,7 +37,8 @@ impl Vertex {
                     format: wgpu::VertexFormat::Uint32x4,
                 },
                 wgpu::VertexAttribute {
-                    offset: (size_of::<[f32; 3]>() * 2 + size_of::<[f32; 2]>() + size_of::<[u32; 4]>()) as wgpu::BufferAddress,
+                    offset: (size_of::<[f32; 3]>() * 2 + size_of::<[f32; 2]>() + size_of::<[u32; 4]>())
+                        as wgpu::BufferAddress,
                     shader_location: 4,
                     format: wgpu::VertexFormat::Float32x4,
                 },

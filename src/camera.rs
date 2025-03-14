@@ -23,7 +23,7 @@ pub struct Camera {
     pub fovy: f32,
     znear: f32,
     zfar: f32,
-    pub  aspect: f32,
+    pub aspect: f32,
 }
 
 impl Camera {
@@ -71,23 +71,18 @@ impl Camera {
             (sin_azimuth * cos_elevation) as f32,
             sin_elevation as f32,
             (-cos_azimuth * cos_elevation) as f32,
-        ).normalize();
-
+        )
+        .normalize();
     }
 
     pub fn get_view_matrix(&self) -> Mat4 {
-        let proj = Mat4::perspective_rh(
-            self.fovy.to_radians(),
-            self.aspect,
-            self.znear,
-            self.zfar,
-        );
+        let proj = Mat4::perspective_rh(self.fovy.to_radians(), self.aspect, self.znear, self.zfar);
         OPENGL_TO_WGPU_MATRIX * proj * Mat4::look_at_rh(self.position, self.position + self.view_direction, self.up)
     }
 
     const MOVE_SPEED: f32 = 0.1;
 
-    pub fn move_update(&mut self){
+    pub fn move_update(&mut self) {
         if self.move_front_back != 0.0 {
             self.position += self.view_direction * self.move_front_back * Self::MOVE_SPEED;
         }

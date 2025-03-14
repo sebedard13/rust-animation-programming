@@ -1,6 +1,8 @@
-use lyon::lyon_tessellation::{BuffersBuilder, LineJoin, StrokeOptions, StrokeTessellator, StrokeVertex, VertexBuffers};
-use lyon::path::Path;
+use lyon::lyon_tessellation::{
+    BuffersBuilder, LineJoin, StrokeOptions, StrokeTessellator, StrokeVertex, VertexBuffers,
+};
 use lyon::math::point;
+use lyon::path::Path;
 
 pub mod renderer;
 
@@ -34,15 +36,20 @@ pub fn get_arrow_model() -> (Vec<BasicVertex>, Vec<u16>) {
     builder.line_to(point(0.0, 1.0));
     builder.end(true);
 
-
     let mut tessellator = StrokeTessellator::new();
     let mut geometry: VertexBuffers<BasicVertex, u16> = VertexBuffers::new();
     {
-        tessellator.tessellate_path(
-            &builder.build(),
-            &StrokeOptions::default().with_line_width(0.05).with_line_join(LineJoin::Bevel),
-            &mut BuffersBuilder::new(&mut geometry, |pos: StrokeVertex| BasicVertex { position: [pos.position().x, pos.position().y, 0.0]}),
-        ).unwrap();
+        tessellator
+            .tessellate_path(
+                &builder.build(),
+                &StrokeOptions::default()
+                    .with_line_width(0.05)
+                    .with_line_join(LineJoin::Bevel),
+                &mut BuffersBuilder::new(&mut geometry, |pos: StrokeVertex| BasicVertex {
+                    position: [pos.position().x, pos.position().y, 0.0],
+                }),
+            )
+            .unwrap();
     }
 
     add_other_side(geometry)
@@ -57,19 +64,35 @@ pub fn get_line_model() -> (Vec<BasicVertex>, Vec<u16>) {
     let mut tessellator = StrokeTessellator::new();
     let mut geometry: VertexBuffers<BasicVertex, u16> = VertexBuffers::new();
     {
-        tessellator.tessellate_path(
-            &builder.build(),
-            &StrokeOptions::default().with_line_width(0.05).with_line_join(LineJoin::Bevel),
-            &mut BuffersBuilder::new(&mut geometry, |pos: StrokeVertex| BasicVertex { position: [pos.position().x, pos.position().y, 0.0]}),
-        ).unwrap();
+        tessellator
+            .tessellate_path(
+                &builder.build(),
+                &StrokeOptions::default()
+                    .with_line_width(0.05)
+                    .with_line_join(LineJoin::Bevel),
+                &mut BuffersBuilder::new(&mut geometry, |pos: StrokeVertex| BasicVertex {
+                    position: [pos.position().x, pos.position().y, 0.0],
+                }),
+            )
+            .unwrap();
     }
 
     add_other_side(geometry)
 }
 
-fn add_other_side(geometry: VertexBuffers<BasicVertex, u16>) ->(Vec<BasicVertex>, Vec<u16>){
-    let z_vertices: Vec<BasicVertex> = geometry.vertices.iter().map(|v| BasicVertex {position: [0.0, v.position[1], v.position[0]]}).collect();
-    let z_indices: Vec<u16> = geometry.indices.iter().map(|i| i + geometry.vertices.len() as u16).collect();
+fn add_other_side(geometry: VertexBuffers<BasicVertex, u16>) -> (Vec<BasicVertex>, Vec<u16>) {
+    let z_vertices: Vec<BasicVertex> = geometry
+        .vertices
+        .iter()
+        .map(|v| BasicVertex {
+            position: [0.0, v.position[1], v.position[0]],
+        })
+        .collect();
+    let z_indices: Vec<u16> = geometry
+        .indices
+        .iter()
+        .map(|i| i + geometry.vertices.len() as u16)
+        .collect();
 
     let merged_vertices = geometry.vertices.iter().chain(z_vertices.iter()).cloned().collect();
     let merged_indices = geometry.indices.iter().chain(z_indices.iter()).cloned().collect();
