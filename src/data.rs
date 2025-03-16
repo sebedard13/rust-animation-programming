@@ -19,6 +19,7 @@ pub struct UserDomain {
     pub double_quat_joints_render: bool,
 
     pub speed: f32,
+    pub pause: bool,
     pub interpolation: f32,
     pub start_rotation: Vec3,
     pub end_rotation: Vec3,
@@ -37,6 +38,7 @@ pub struct UserDomain {
 
     pub selected_animation: usize,
     pub animations: Vec<String>,
+    pub animations_duration: Vec<f32>,
 }
 
 impl UserDomain {
@@ -51,7 +53,8 @@ impl UserDomain {
 
             double_quat_joints_render: false,
 
-            speed: 0.05,
+            speed: 0.45,
+            pause: false,
             interpolation: 0.0,
 
             draw_world_coordinates: true,
@@ -72,6 +75,7 @@ impl UserDomain {
 
             selected_animation: 0,
             animations: vec!["Default".to_string()],
+            animations_duration: vec![1.0],
         }
     }
 
@@ -133,6 +137,7 @@ impl UserDomain {
     }
 
     pub fn calculate_model_matrix(&self) -> Mat4 {
+        let t = self.interpolation/self.animations_duration[self.selected_animation];
         let start_rotaton = Quat::from_euler(
             EulerRot::ZYX,
             self.start_rotation.z.to_radians(),
@@ -146,10 +151,10 @@ impl UserDomain {
             self.end_rotation.x.to_radians(),
         );
 
-        let rotation = start_rotaton.slerp(end_rotaton, self.interpolation);
+        let rotation = start_rotaton.slerp(end_rotaton, t);
 
         let pos = hermite_spline(
-            self.interpolation,
+            t,
             self.start_pos,
             self.start_tangent,
             self.end_tangent,

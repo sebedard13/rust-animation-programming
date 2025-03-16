@@ -366,6 +366,7 @@ impl State {
         data.camera.aspect = (size.width as f32) / (size.height as f32);
         data.camera.update_vectors();
         data.animations = woman_model.get_animation_names();
+        data.animations_duration = woman_model.animations().iter().map(|a| a.duration()).collect();
 
         let basic_object_renderer = BasicObjectRenderer::new(&device, &camera_bind_group_layout, &config, &mut data);
         Self {
@@ -457,9 +458,13 @@ impl State {
     }
 
     fn update_timeline(&mut self, dt: Duration) {
+        if self.data.pause {
+            return;
+        }
+        
         let speed = self.data.speed;
         self.data.interpolation += dt.as_secs_f32() * speed;
-        if self.data.interpolation > 1.0 {
+        if self.data.interpolation > self.woman_model.animations()[self.data.selected_animation].duration() {
             self.data.interpolation = 0.0;
         }
     }
@@ -494,7 +499,6 @@ impl State {
                 None
             }
         };
-
         self.woman_model.render_animation(
             self.data.interpolation,
             animation,

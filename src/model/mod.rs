@@ -252,10 +252,7 @@ impl Modelv2 {
                 }
             }
 
-            animations.push(Animation {
-                name,
-                channels: channels,
-            });
+            animations.push(Animation::new(name, channels));
         }
         Ok(animations)
     }
@@ -360,6 +357,10 @@ impl Modelv2 {
 
     pub fn get_animation_names(&self) -> Vec<String> {
         self.animations.iter().map(|a| a.name.clone()).collect()
+    }
+    
+    pub fn animations (&self) -> &Vec<Animation> {
+        &self.animations
     }
 }
 

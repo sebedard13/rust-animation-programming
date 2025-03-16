@@ -5,6 +5,44 @@ use std::ops::{Add, Mul, Sub};
 pub struct Animation {
     pub name: String,
     pub channels: Vec<Option<NodeChannels>>,
+    duration: f32
+}
+
+impl Animation {
+    pub fn new(name: String, channels: Vec<Option<NodeChannels>>) -> Self {
+        let mut max_duration = 0.0;
+        for channel in &channels {
+            if let Some(channel) = channel {
+                if let Some(translation) = &channel.translation {
+                    let duration = *translation.times.last().unwrap();
+                    if duration > max_duration {
+                        max_duration = duration;
+                    }
+                }
+                if let Some(rotation) = &channel.rotation {
+                    let duration = *rotation.times.last().unwrap();
+                    if duration > max_duration {
+                        max_duration = duration;
+                    }
+                }
+                if let Some(scale) = &channel.scale {
+                    let duration = *scale.times.last().unwrap();
+                    if duration > max_duration {
+                        max_duration = duration;
+                    }
+                }
+            }
+        }
+        Self {
+            name,
+            channels,
+            duration: max_duration,
+        }
+    }
+
+    pub fn duration(&self) -> f32 {
+        self.duration
+    }
 }
 
 #[derive(Default, Clone)]

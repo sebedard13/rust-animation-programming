@@ -83,7 +83,9 @@ pub fn gui(user_domain: &mut UserDomain, ui: &Context) {
                     .selected_text(format!("{:?}", user_domain.animations[user_domain.selected_animation]))
                     .show_ui(ui, |ui| {
                         for i in 0..user_domain.animations.len() {
-                            ui.selectable_value(&mut user_domain.selected_animation, i, &user_domain.animations[i]);
+                            if ui.selectable_value(&mut user_domain.selected_animation, i, &user_domain.animations[i]).clicked(){
+                                user_domain.selected_animation = i;
+                            }
                         }
                     });
 
@@ -92,7 +94,8 @@ pub fn gui(user_domain: &mut UserDomain, ui: &Context) {
                         .text("Speed")
                         .step_by(0.01),
                 );
-                ui.add(Slider::new(&mut user_domain.interpolation, 0.0..=1.0).text("Interpolation"));
+                ui.checkbox(&mut user_domain.pause, "Pause");
+                ui.add(Slider::new(&mut user_domain.interpolation, 0.0..=user_domain.animations_duration[user_domain.selected_animation]).text("Interpolation"));
                 if ui.button("Reset Animation").clicked() {
                     user_domain.reset_animation();
                 }
